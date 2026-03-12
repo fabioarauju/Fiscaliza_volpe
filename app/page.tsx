@@ -1,7 +1,10 @@
+import GraficoBarra from "../components/GraficoBarra";
+import GraficoPizza from "../components/GraficoPizza";
+
 export default function Home() {
 	return (
-		<div className="min-h-dvh bg-gray-50 py-12">
-			<div className="max-w-6xl mx-auto px-6">
+		<div className="bg-blue-100 py-12">
+			<div className="max-w-6xl mx-auto px-6 space-y-8">
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 					{/* Card 1 */}
 					<div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center justify-between">
@@ -33,7 +36,7 @@ export default function Home() {
 					</div>
 
 					{/* Card 3 */}
-					<div className="bg-gradient-to-br from-orange-400 to-orange-300 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center justify-between">
+					<div className="bg-linear-to-br from-orange-400 to-orange-300 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center justify-between">
 						<div className="flex justify-between items-start mb-4">
 							<h2 className="font-semibold text-lg">Enviar Denúncia</h2>
 						</div>
@@ -43,6 +46,34 @@ export default function Home() {
 						<button className="bg-white text-orange-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-orange-50 transition">
 							Fazer denúncia
 						</button>
+					</div>
+				</div>
+				<div className="grid grid-cols-2">
+					<div className="space-y-6">
+						<h2 className="text-blue-700 text-3xl">
+							<strong>Visão Geral</strong> da Gestão Pública
+						</h2>
+						<GraficoBarra />
+						<GraficoPizza />
+						<div className="flex flex-col items-center space-y-4">
+							<div className="grid grid-cols-3 gap-4">
+								<div className="bg-blue-200 p-2 rounded-lg text-center shadow-lg hover:shadow-2xl transition">
+									<span className="text-4xl text-blue-900">120</span>
+									<p className="text-md text-blue-900">Licitações Recentes</p>
+								</div>
+								<div className="bg-blue-200 p-2 rounded-lg text-center shadow-lg hover:shadow-2xl transition">
+									<span className="text-4xl text-blue-900">85</span>
+									<p className="text-md text-blue-900">Obras em Execução</p>
+								</div>
+								<div className="bg-blue-200 p-2 rounded-lg text-center shadow-lg hover:shadow-2xl transition">
+									<span className="text-4xl text-blue-900">45</span>
+									<p className="text-md text-blue-900">Contratos Ativos</p>
+								</div>
+							</div>
+							<button className="bg-blue-900 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition">
+								Ver detalhes
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
