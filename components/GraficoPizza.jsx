@@ -21,7 +21,9 @@ const COLORS = ["#2563eb", "#f97316", "#22c55e", "#eab308"];
 export default function BudgetPieChart() {
 	return (
 		<div className="bg-white rounded-xl shadow-lg p-6">
-			<h2 className="text-lg font-semibold mb-4">Distribuição Orçamentária</h2>
+			<h2 className="text-lg text-blue-900 font-semibold mb-4">
+				Distribuição Orçamentária
+			</h2>
 
 			<ResponsiveContainer width="100%" height={300}>
 				<PieChart>

@@ -14,7 +14,7 @@ import {
 const data = [
 	{ setor: "Saúde", valor: 20000 },
 	{ setor: "Educação", valor: 15000 },
-	{ setor: "Infraestrutura", valor: 12000 },
+	{ setor: "Infra", valor: 12000 },
 	{ setor: "Segurança", valor: 9000 },
 	{ setor: "Outros", valor: 14000 },
 ];
@@ -22,7 +22,9 @@ const data = [
 export default function GraficoBarra() {
 	return (
 		<div className="bg-white rounded-xl shadow-lg p-6">
-			<h2 className="text-lg font-semibold mb-4">Despesas por Setor</h2>
+			<h2 className="text-lg text-blue-900 font-semibold mb-4">
+				Despesas por Setor
+			</h2>
 
 			<ResponsiveContainer width="100%" height={300}>
 				<BarChart data={data}>

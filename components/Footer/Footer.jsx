@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const Footer = () => {
 	return (
-		<footer className="bg-gradient-to-tr from-blue-700 via-blue-600 to-blue-400 text-white mt-20">
+		<footer className="bg-linear-to-tr from-blue-700 via-blue-600 to-blue-400 text-white">
 			<div className="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-3 gap-8">
 				{/* Logo / descrição */}
 				<div>
