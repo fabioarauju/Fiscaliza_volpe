@@ -12,7 +12,9 @@ import {
 export default function GraficoBarra({ dados }) {
 	return (
 		<div className="bg-white p-6 rounded-xl shadow">
-			<h2 className="text-xl font-semibold mb-4">Despesas por Setor</h2>
+			<h2 className="text-xl text-black font-semibold mb-4">
+				Despesas por Setor
+			</h2>
 
 			<ResponsiveContainer width="100%" height={300}>
 				<BarChart data={dados}>
