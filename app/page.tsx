@@ -34,7 +34,7 @@ export default function Home() {
 
 						<div className="flex items-end gap-2">
 							<span className="text-3xl md:text-4xl font-bold text-blue-800">
-								32
+								50
 							</span>
 
 							<span className="text-gray-500 text-sm">em andamento</span>
@@ -52,9 +52,12 @@ export default function Home() {
 
 						<p className="text-orange-100 mb-4">Faça sua denúncia!</p>
 
-						<button className="bg-white text-orange-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-orange-50 transition">
+						<Link
+							href="/denuncias"
+							className="bg-white text-orange-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-orange-50 transition"
+						>
 							Fazer denúncia
-						</button>
+						</Link>
 					</div>
 				</div>
 
