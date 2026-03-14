@@ -3,6 +3,13 @@ import GraficoPizza from "../components/GraficoPizza";
 import Link from "next/link";
 
 export default function Home() {
+	const dados = [
+		{ setor: "Saúde", valor: 850 },
+		{ setor: "Educação", valor: 620 },
+		{ setor: "Infra", valor: 480 },
+		{ setor: "Segurança", valor: 320 },
+	];
+
 	return (
 		<div className="bg-blue-100 py-12">
 			<div className="max-w-6xl mx-auto px-6 space-y-8">
@@ -53,8 +60,8 @@ export default function Home() {
 						<h2 className="text-blue-700 text-3xl">
 							<strong>Visão Geral</strong> da Gestão Pública
 						</h2>
-						<GraficoBarra />
-						<GraficoPizza />
+						<GraficoBarra dados={dados} />
+						<GraficoPizza dados={dados} />
 						<div className="flex flex-col items-center space-y-4">
 							<div className="grid grid-cols-3 gap-4">
 								<div className="bg-blue-200 p-2 rounded-lg text-center shadow-lg hover:shadow-2xl transition">
@@ -113,9 +120,12 @@ export default function Home() {
 								</div>
 								<hr className="text-gray-400" />
 								<div className="flex justify-end">
-									<button className="text-blue-900 font-bold text-lg underline cursor-pointer">
+									<Link
+										href="/projetos"
+										className="text-blue-900 font-bold text-lg underline cursor-pointer"
+									>
 										Ver Todos
-									</button>
+									</Link>
 								</div>
 							</ul>
 						</div>

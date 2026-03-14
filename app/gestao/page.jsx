@@ -7,49 +7,51 @@ import GraficoPizza from "../../components/GraficoPizza";
 export default function GestaoPublica() {
 	const [tipoGasto, setTipoGasto] = useState("todos");
 
+	const dados = [
+		{ setor: "Saúde", valor: 850 },
+		{ setor: "Educação", valor: 620 },
+		{ setor: "Infra", valor: 480 },
+		{ setor: "Segurança", valor: 320 },
+	];
+
+	const dadosFiltrados =
+		tipoGasto === "todos"
+			? dados
+			: dados.filter((item) => item.setor === tipoGasto);
+
 	return (
 		<div className="bg-gray-100 min-h-screen py-12">
 			<div className="max-w-6xl mx-auto px-6 space-y-10">
-				{/* Título */}
-				<div>
-					<h1 className="text-4xl font-bold text-black">
-						Visão Geral da Gestão Pública
-					</h1>
-					<p className="text-gray-600 mt-2">
-						Acompanhe dados consolidados de despesas e investimentos públicos
-					</p>
-				</div>
+				<h1 className="text-4xl font-bold text-black">
+					Visão Geral da Gestão Pública
+				</h1>
 
 				{/* FILTRO */}
+
 				<div className="bg-white p-6 rounded-xl shadow flex flex-wrap gap-6 items-end">
-					<div>
-						<label className="block text-sm text-gray-600 mb-1">
-							Tipo de Gasto
-						</label>
+					<label className="block text-sm text-gray-600 mb-1">
+						Tipo de gasto
+					</label>
 
-						<select
-							className="border border-gray-300 rounded-lg px-4 py-2 text-black"
-							value={tipoGasto}
-							onChange={(e) => setTipoGasto(e.target.value)}
-						>
-							<option value="todos">Todos</option>
-							<option value="saude">Saúde</option>
-							<option value="educacao">Educação</option>
-							<option value="infraestrutura">Infraestrutura</option>
-							<option value="seguranca">Segurança</option>
-						</select>
-					</div>
-
-					<button className="bg-blue-700 text-white px-6 py-2 rounded-lg hover:bg-blue-800 transition">
-						Aplicar Filtro
-					</button>
+					<select
+						className="border border-gray-300 rounded-lg px-4 py-2 text-black"
+						value={tipoGasto}
+						onChange={(e) => setTipoGasto(e.target.value)}
+					>
+						<option value="todos">Todos</option>
+						<option value="Saúde">Saúde</option>
+						<option value="Educação">Educação</option>
+						<option value="Infra">Infraestrutura</option>
+						<option value="Segurança">Segurança</option>
+					</select>
 				</div>
 
 				{/* GRÁFICOS */}
-				<div className="grid md:grid-cols-2 gap-8">
-					<GraficoBarra />
 
-					<GraficoPizza />
+				<div className="grid md:grid-cols-2 gap-8">
+					<GraficoBarra dados={dadosFiltrados} />
+
+					<GraficoPizza dados={dadosFiltrados} />
 				</div>
 
 				{/* INDICADORES */}
