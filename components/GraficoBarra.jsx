@@ -18,7 +18,13 @@ export default function GraficoBarra({ dados }) {
 
 			<ResponsiveContainer width="100%" height={300}>
 				<BarChart data={dados}>
-					<XAxis dataKey="setor" />
+					<XAxis
+						dataKey="setor"
+						interval={0}
+						angle={-20}
+						textAnchor="end"
+						height={60}
+					/>
 
 					<YAxis />
 

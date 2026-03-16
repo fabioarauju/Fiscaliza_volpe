@@ -8,10 +8,13 @@ export default function GestaoPublica() {
 	const [tipoGasto, setTipoGasto] = useState("todos");
 
 	const dados = [
-		{ setor: "Saúde", valor: 850 },
-		{ setor: "Educação", valor: 620 },
-		{ setor: "Infra", valor: 480 },
-		{ setor: "Segurança", valor: 320 },
+		{ setor: "Saúde", valor: 831.96 },
+		{ setor: "Educação", valor: 586.76 },
+		{ setor: "Urbanismo (Obras)", valor: 265.6 },
+		{ setor: "Administração", valor: 218.56 },
+		{ setor: "Previdência Social", valor: 193.68 },
+		{ setor: "Assistência Social", valor: 49.0 },
+		{ setor: "Outros", valor: 217.86 },
 	];
 
 	const dadosFiltrados =

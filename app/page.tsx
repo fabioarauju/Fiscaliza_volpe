@@ -4,10 +4,13 @@ import Link from "next/link";
 
 export default function Home() {
 	const dados = [
-		{ setor: "Saúde", valor: 850 },
-		{ setor: "Educação", valor: 620 },
-		{ setor: "Infra", valor: 480 },
-		{ setor: "Segurança", valor: 320 },
+		{ setor: "Saúde", valor: 831.96 },
+		{ setor: "Educação", valor: 586.76 },
+		{ setor: "Urbanismo (Obras)", valor: 265.6 },
+		{ setor: "Administração", valor: 218.56 },
+		{ setor: "Previdência Social", valor: 193.68 },
+		{ setor: "Assistência Social", valor: 49.0 },
+		{ setor: "Outros", valor: 217.86 },
 	];
 
 	return (
@@ -17,7 +20,7 @@ export default function Home() {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 					{/* Card Despesas */}
-					<div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center text-center">
+					<div className="bg-linear-to-br from-blue-600 to-blue-500 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center text-center">
 						<h2 className="font-semibold text-lg mb-2">Despesas Públicas</h2>
 
 						<p className="text-2xl md:text-3xl font-bold">R$1.245.780.560</p>
@@ -47,7 +50,7 @@ export default function Home() {
 
 					{/* Card Denúncia */}
 
-					<div className="bg-gradient-to-br from-orange-400 to-orange-300 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center text-center">
+					<div className="bg-linear-to-br from-orange-400 to-orange-300 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center text-center">
 						<h2 className="font-semibold text-lg mb-2">Enviar Denúncia</h2>
 
 						<p className="text-orange-100 mb-4">Faça sua denúncia!</p>

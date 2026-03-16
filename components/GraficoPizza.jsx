@@ -9,7 +9,15 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 
-const CORES = ["#2563eb", "#f97316", "#22c55e", "#eab308", "#6366f1"];
+const CORES = [
+	"#2563eb", // azul
+	"#f97316", // laranja
+	"#22c55e", // verde
+	"#eab308", // amarelo
+	"#6366f1", // indigo
+	"#ef4444", // vermelho
+	"#14b8a6", // teal
+];
 
 export default function GraficoPizza({ dados }) {
 	return (
