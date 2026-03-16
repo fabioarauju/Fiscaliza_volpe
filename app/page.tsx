@@ -13,6 +13,8 @@ export default function Home() {
 		{ setor: "Outros", valor: 217.86 },
 	];
 
+	const totalDespesas = dados.reduce((acc, item) => acc + item.valor, 0);
+
 	return (
 		<div className="bg-blue-100 py-10 md:py-12">
 			<div className="max-w-6xl mx-auto px-4 md:px-6 space-y-10">
@@ -23,7 +25,9 @@ export default function Home() {
 					<div className="bg-linear-to-br from-blue-600 to-blue-500 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transition flex flex-col items-center text-center">
 						<h2 className="font-semibold text-lg mb-2">Despesas Públicas</h2>
 
-						<p className="text-2xl md:text-3xl font-bold">R$1.245.780.560</p>
+						<p className="text-2xl md:text-3xl font-bold">
+							R${(totalDespesas * 1000000).toLocaleString("pt-BR")}
+						</p>
 
 						<p className="text-blue-100 mt-2 text-sm">Gastos no mês atual</p>
 					</div>

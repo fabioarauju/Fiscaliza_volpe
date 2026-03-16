@@ -44,8 +44,11 @@ export default function GestaoPublica() {
 						<option value="todos">Todos</option>
 						<option value="Saúde">Saúde</option>
 						<option value="Educação">Educação</option>
-						<option value="Infra">Infraestrutura</option>
-						<option value="Segurança">Segurança</option>
+						<option value="Urbanismo (Obras)">Urbanismo (Obras)</option>
+						<option value="Administração">Administração</option>
+						<option value="Previdência Social">Previdência Social</option>
+						<option value="Assistência Social">Assistência Social</option>
+						<option value="Outros">Outros</option>
 					</select>
 				</div>
 
@@ -61,7 +64,7 @@ export default function GestaoPublica() {
 				<div className="grid md:grid-cols-4 gap-6">
 					<div className="bg-white p-6 rounded-xl shadow text-center">
 						<p className="text-gray-600">Total Investido</p>
-						<p className="text-3xl font-bold text-black">R$ 2.3 Bi</p>
+						<p className="text-3xl font-bold text-black">R$ 2.36 Bi</p>
 					</div>
 
 					<div className="bg-white p-6 rounded-xl shadow text-center">
@@ -81,33 +84,42 @@ export default function GestaoPublica() {
 				</div>
 
 				{/* RANKING */}
-				<div className="bg-white rounded-xl shadow p-6">
-					<h2 className="text-2xl font-semibold text-black mb-6">
-						Ranking de Investimentos por Setor
-					</h2>
+				<ul className="space-y-4">
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Saúde</span>
+						<span className="font-semibold">R$ 831,9 milhões</span>
+					</li>
 
-					<ul className="space-y-4">
-						<li className="flex justify-between border-b pb-2 text-black">
-							<span>Saúde</span>
-							<span className="font-semibold">R$ 850 milhões</span>
-						</li>
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Educação</span>
+						<span className="font-semibold">R$ 586,7 milhões</span>
+					</li>
 
-						<li className="flex justify-between border-b pb-2 text-black">
-							<span>Educação</span>
-							<span className="font-semibold">R$ 620 milhões</span>
-						</li>
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Urbanismo (Obras)</span>
+						<span className="font-semibold">R$ 265,6 milhões</span>
+					</li>
 
-						<li className="flex justify-between border-b pb-2 text-black">
-							<span>Infraestrutura</span>
-							<span className="font-semibold">R$ 480 milhões</span>
-						</li>
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Administração</span>
+						<span className="font-semibold">R$ 218,5 milhões</span>
+					</li>
 
-						<li className="flex justify-between border-b pb-2 text-black">
-							<span>Segurança</span>
-							<span className="font-semibold">R$ 320 milhões</span>
-						</li>
-					</ul>
-				</div>
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Outros</span>
+						<span className="font-semibold">R$ 217,8 milhões</span>
+					</li>
+
+					<li className="flex justify-between border-b pb-2 text-black">
+						<span>Previdência Social</span>
+						<span className="font-semibold">R$ 193,6 milhões</span>
+					</li>
+
+					<li className="flex justify-between pb-2 text-black">
+						<span>Assistência Social</span>
+						<span className="font-semibold">R$ 49 milhões</span>
+					</li>
+				</ul>
 
 				{/* TABELA */}
 				<div className="bg-white rounded-xl shadow p-6">
@@ -149,8 +161,8 @@ export default function GestaoPublica() {
 							</tr>
 
 							<tr className="text-black">
-								<td className="py-3">Infraestrutura</td>
-								<td>Duplicação da Rodovia Central</td>
+								<td className="py-3">Urbanismo (Obras)</td>
+								<td>Revitalização de Avenida Principal</td>
 								<td>R$ 120 milhões</td>
 								<td>
 									<span className="bg-blue-200 text-blue-800 px-2 py-1 rounded">
