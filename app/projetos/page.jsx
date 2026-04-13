@@ -168,9 +168,6 @@ export default function ProjetosDeLei() {
           <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tighter italic">
             Projetos de Lei
           </h1>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            HackGov • Fiscalização 2025-2026
-          </p>
         </div>
 
         {/* Cards de Resumo Minimalistas */}
