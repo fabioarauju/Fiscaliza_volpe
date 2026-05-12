@@ -7,7 +7,7 @@ const sz16 = { width: 16, height: 16, flexShrink: 0 } as const;
 const sz14 = { width: 14, height: 14, flexShrink: 0 } as const;
 const sz20 = { width: 20, height: 20, flexShrink: 0 } as const;
 
-function IconShield({ size = sz16 }: { size?: typeof sz16 }) {
+function IconShield({ size = sz16 }: { size?: { width: number; height: number; flexShrink: number } }) {
     return (
         <svg style={size} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.286z" />
