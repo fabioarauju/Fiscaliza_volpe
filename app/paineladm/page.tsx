@@ -480,7 +480,7 @@ export default function AdminDashboard() {
                                                             <div style={{ display: "inline-flex", gap: 6 }}>
                                                                 <ActBtn onClick={() => { }} title="Editar"><IcoEdit /></ActBtn>
                                                                 <ActBtn
-                                                                    onClick={() => setDenunciaSelecionada(d)}
+                                                                    onClick={() => setDenunciaSelecionada(p)}
                                                                     title="Visualizar"
                                                                 >
                                                                     <IcoEye />
