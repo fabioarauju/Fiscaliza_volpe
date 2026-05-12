@@ -95,13 +95,13 @@ const projetos = [
     { num: "PL-006/2025", titulo: "Bolsa Estudante Universitário", cat: "Educação", status: "Rejeitado", votos: 4 },
 ];
 
-const denuncias = [
-    { id: "DN-081", desc: "Buraco na Rua das Flores nº 42", local: "Centro", status: "Pendente", data: "09/05/2025" },
-    { id: "DN-080", desc: "Iluminação apagada na Av. Brasil", local: "Jardim Norte", status: "Em análise", data: "08/05/2025" },
-    { id: "DN-079", desc: "Esgoto a céu aberto no Bairro Novo", local: "Bairro Novo", status: "Aprovada", data: "07/05/2025" },
-    { id: "DN-078", desc: "Pichação em patrimônio histórico", local: "Centro Histórico", status: "Arquivada", data: "05/05/2025" },
-    { id: "DN-077", desc: "Lixo acumulado na Praça da Paz", local: "Vila Alta", status: "Pendente", data: "04/05/2025" },
-    { id: "DN-076", desc: "Semáforo quebrado na Av. Central", local: "Centro", status: "Em análise", data: "03/05/2025" },
+const denunciasIniciais = [
+    { id: "DN-081", desc: "Buraco na Rua das Flores nº 42", local: "Centro", status: "Pendente", data: "09/05/2026" },
+    { id: "DN-080", desc: "Iluminação apagada na Av. Brasil", local: "Jardim Norte", status: "Em análise", data: "08/05/2026" },
+    { id: "DN-079", desc: "Esgoto a céu aberto no Bairro Novo", local: "Bairro Novo", status: "Aprovada", data: "07/05/2026" },
+    { id: "DN-078", desc: "Pichação em patrimônio histórico", local: "Centro Histórico", status: "Arquivada", data: "05/05/2026" },
+    { id: "DN-077", desc: "Lixo acumulado na Praça da Paz", local: "Vila Alta", status: "Pendente", data: "04/05/2026" },
+    { id: "DN-076", desc: "Semáforo quebrado na Av. Central", local: "Centro", status: "Em análise", data: "03/05/2026" },
 ];
 
 const atividades = [
@@ -178,11 +178,20 @@ type Tab = "painel" | "projetos" | "denuncias" | "gastos";
 
 export default function AdminDashboard() {
     const [tab, setTab] = useState<Tab>("painel");
+    const [denunciasData, setDenunciasData] =
+        useState(denunciasIniciais);
     const [gastosData, setGastosData] = useState(secretarias.map(s => ({ ...s })));
     const [editIdx, setEditIdx] = useState<number | null>(null);
     const [editVal, setEditVal] = useState("");
+    const [filtroDenuncia, setFiltroDenuncia] =
+        useState("Todas");
 
-    const pendentes = denuncias.filter(d => d.status === "Pendente").length;
+    const [denunciaSelecionada, setDenunciaSelecionada] =
+        useState<any>(null);
+
+    const pendentes = denunciasData.filter(
+        d => d.status === "Pendente"
+    ).length;
 
     function saveEdit(i: number) {
         const v = parseFloat(editVal);
@@ -192,7 +201,31 @@ export default function AdminDashboard() {
         setEditIdx(null);
     }
 
+    const denunciasFiltradas =
+        filtroDenuncia === "Todas"
+            ? denunciasData
+            : denunciasData.filter(
+                d => d.status === filtroDenuncia
+            );
     const totalEdit = gastosData.reduce((a, s) => a + s.valor, 0);
+    function atualizarStatusDenuncia(
+        id: string,
+        novoStatus: string
+    ) {
+        const hoje = new Date().toLocaleDateString("pt-BR");
+
+        setDenunciasData(prev =>
+            prev.map(d =>
+                d.id === id
+                    ? {
+                        ...d,
+                        status: novoStatus,
+                        data: hoje,
+                    }
+                    : d
+            )
+        );
+    }
 
     // ── Sidebar nav item
     const NavItem = ({ id, label, icon }: { id: Tab; label: string; icon: React.ReactNode }) => {
@@ -287,9 +320,72 @@ export default function AdminDashboard() {
                         <NavItem id="denuncias" label="Denúncias" icon={<IcoFlag s={sz18} />} />
                         <NavItem id="gastos" label="Gastos Públicos" icon={<IcoChart s={sz18} />} />
                         <div style={{ flex: 1 }} />
-                        <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16, margin: "0 4px" }}>
-                            <div style={{ fontSize: 12, color: "#94a3b8" }}>Sessão ativa</div>
-                            <div style={{ fontSize: 13, color: "#374151", fontWeight: 500, marginTop: 2 }}>admin@camara.gov.br</div>
+                        <div style={{
+                            borderTop: "1px solid #f1f5f9",
+                            paddingTop: 16,
+                            margin: "0 4px",
+                        }}>
+                            <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 16, margin: "0 4px" }}>
+                                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                                    Sessão ativa
+                                </div>
+
+                                <div style={{
+                                    fontSize: 13,
+                                    color: "#374151",
+                                    fontWeight: 500,
+                                    marginTop: 2
+                                }}>
+                                    admin@camara.gov.br
+                                </div>
+
+                                <button
+                                    onClick={async () => {
+                                        await fetch("/api/admin/logout", {
+                                            method: "POST",
+                                        });
+
+                                        window.location.href = "/admin";
+                                    }}
+                                    style={{
+                                        marginTop: 12,
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        borderRadius: 8,
+                                        border: "1px solid #fecaca",
+                                        background: "#fef2f2",
+                                        color: "#dc2626",
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Sair do painel
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={async () => {
+                                    await fetch("/api/admin/logout", {
+                                        method: "POST",
+                                    });
+
+                                    window.location.href = "/admin";
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px 12px",
+                                    borderRadius: 8,
+                                    border: "1px solid #fee2e2",
+                                    background: "#fff1f2",
+                                    color: "#dc2626",
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                }}
+                            >
+                                Sair do painel
+                            </button>
                         </div>
                     </aside>
 
@@ -315,7 +411,7 @@ export default function AdminDashboard() {
                                     {/* Bar chart */}
                                     <div style={{ background: "#fff", border: "1px solid #f1f5f9", borderRadius: 12, padding: "20px 24px" }}>
                                         <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 4 }}>Gastos por Secretaria (R$ milhões)</div>
-                                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>Orçamento 2025</div>
+                                        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 20 }}>Orçamento 2026</div>
                                         <BarChart />
                                     </div>
 
@@ -383,7 +479,12 @@ export default function AdminDashboard() {
                                                         <td style={{ ...td, textAlign: "center" }}>
                                                             <div style={{ display: "inline-flex", gap: 6 }}>
                                                                 <ActBtn onClick={() => { }} title="Editar"><IcoEdit /></ActBtn>
-                                                                <ActBtn onClick={() => { }} title="Visualizar"><IcoEye /></ActBtn>
+                                                                <ActBtn
+                                                                    onClick={() => setDenunciaSelecionada(d)}
+                                                                    title="Visualizar"
+                                                                >
+                                                                    <IcoEye />
+                                                                </ActBtn>
                                                                 <ActBtn onClick={() => { }} title="Excluir" danger><IcoTrash /></ActBtn>
                                                             </div>
                                                         </td>
@@ -406,12 +507,31 @@ export default function AdminDashboard() {
                                     </div>
                                     <div style={{ display: "flex", gap: 8 }}>
                                         {["Todas", "Pendente", "Em análise", "Aprovada", "Arquivada"].map(f => (
-                                            <button key={f} style={{
-                                                padding: "6px 14px", borderRadius: 20, border: "1px solid #e2e8f0",
-                                                background: f === "Todas" ? "#3b82f6" : "#fff",
-                                                color: f === "Todas" ? "#fff" : "#475569",
-                                                fontSize: 12, fontWeight: 500, cursor: "pointer",
-                                            }}>{f}</button>
+                                            <button
+                                                key={f}
+                                                onClick={() => setFiltroDenuncia(f)}
+                                                style={{
+                                                    padding: "6px 14px",
+                                                    borderRadius: 20,
+                                                    border: "1px solid #e2e8f0",
+                                                    background:
+                                                        filtroDenuncia === f
+                                                            ? "#3b82f6"
+                                                            : "#fff",
+
+                                                    color:
+                                                        filtroDenuncia === f
+                                                            ? "#fff"
+                                                            : "#475569",
+
+                                                    fontSize: 12,
+                                                    fontWeight: 500,
+                                                    cursor: "pointer",
+                                                    transition: "0.2s",
+                                                }}
+                                            >
+                                                {f}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -430,7 +550,7 @@ export default function AdminDashboard() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {denuncias.map((d, i) => (
+                                                {denunciasFiltradas.map((d, i) => (
                                                     <tr key={i} className="row">
                                                         <td style={td}><span style={{ fontFamily: "monospace", fontSize: 12, color: "#64748b" }}>{d.id}</span></td>
                                                         <td style={{ ...td, maxWidth: 260 }}>{d.desc}</td>
@@ -440,10 +560,21 @@ export default function AdminDashboard() {
                                                         <td style={{ ...td, textAlign: "center" }}>
                                                             <div style={{ display: "inline-flex", gap: 6 }}>
                                                                 {d.status !== "Aprovada" && d.status !== "Arquivada" && (
-                                                                    <ActBtn onClick={() => { }} title="Aprovar"><IcoCheck /></ActBtn>
+                                                                    <ActBtn
+                                                                        onClick={() => atualizarStatusDenuncia(d.id, "Aprovada")}
+                                                                        title="Aprovar"
+                                                                    >
+                                                                        <IcoCheck />
+                                                                    </ActBtn>
                                                                 )}
                                                                 {d.status !== "Arquivada" && (
-                                                                    <ActBtn onClick={() => { }} title="Arquivar" danger><IcoArchive /></ActBtn>
+                                                                    <ActBtn
+                                                                        onClick={() => atualizarStatusDenuncia(d.id, "Arquivada")}
+                                                                        title="Arquivar"
+                                                                        danger
+                                                                    >
+                                                                        <IcoArchive />
+                                                                    </ActBtn>
                                                                 )}
                                                                 <ActBtn onClick={() => { }} title="Visualizar"><IcoEye /></ActBtn>
                                                             </div>
@@ -557,7 +688,169 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
                         )}
+{denunciaSelecionada && (
+    <div
+        style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999,
+            padding: 20,
+        }}
+    >
+        <div
+            style={{
+                width: "100%",
+                maxWidth: 520,
+                background: "#fff",
+                borderRadius: 16,
+                padding: 24,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+            }}
+        >
+            {/* Header */}
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
+                }}
+            >
+                <div>
+                    <div
+                        style={{
+                            fontSize: 20,
+                            fontWeight: 700,
+                            color: "#1e293b",
+                        }}
+                    >
+                        Detalhes da denúncia
+                    </div>
 
+                    <div
+                        style={{
+                            fontSize: 12,
+                            color: "#94a3b8",
+                            marginTop: 4,
+                        }}
+                    >
+                        {denunciaSelecionada.id}
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => setDenunciaSelecionada(null)}
+                    style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        border: "none",
+                        background: "#f1f5f9",
+                        cursor: "pointer",
+                        fontSize: 18,
+                        color: "#475569",
+                    }}
+                >
+                    ×
+                </button>
+            </div>
+
+            {/* Conteúdo */}
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 16,
+                }}
+            >
+                <div>
+                    <div style={{
+                        fontSize: 11,
+                        color: "#94a3b8",
+                        marginBottom: 4,
+                        textTransform: "uppercase",
+                        fontWeight: 600,
+                    }}>
+                        Descrição
+                    </div>
+
+                    <div style={{
+                        fontSize: 14,
+                        color: "#334155",
+                        lineHeight: 1.5,
+                    }}>
+                        {denunciaSelecionada.desc}
+                    </div>
+                </div>
+
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 16,
+                }}>
+                    <div>
+                        <div style={{
+                            fontSize: 11,
+                            color: "#94a3b8",
+                            marginBottom: 4,
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                        }}>
+                            Local
+                        </div>
+
+                        <div style={{
+                            fontSize: 14,
+                            color: "#334155",
+                        }}>
+                            {denunciaSelecionada.local}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style={{
+                            fontSize: 11,
+                            color: "#94a3b8",
+                            marginBottom: 4,
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                        }}>
+                            Data
+                        </div>
+
+                        <div style={{
+                            fontSize: 14,
+                            color: "#334155",
+                        }}>
+                            {denunciaSelecionada.data}
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style={{
+                        fontSize: 11,
+                        color: "#94a3b8",
+                        marginBottom: 4,
+                        textTransform: "uppercase",
+                        fontWeight: 600,
+                    }}>
+                        Status
+                    </div>
+
+                    <Badge
+                        status={denunciaSelecionada.status}
+                        map={statusDenunciaCor}
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+)}
                     </main>
                 </div>
             </div>

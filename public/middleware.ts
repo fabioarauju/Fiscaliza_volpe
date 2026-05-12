@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-    const cookie = req.cookies.get("admin_session");
+    const session = req.cookies.get("admin_session");
 
-    if (!cookie) {
+    if (!session) {
         return NextResponse.redirect(new URL("/admin", req.url));
     }
 
@@ -12,5 +12,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/paineladm/:path*"],
+    matcher: ["/paineladm"],
 };

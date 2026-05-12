@@ -14,7 +14,13 @@ export async function POST(req: Request) {
             success: true,
         });
 
-        response.cookies.set("admin_session", "true");
+        response.cookies.set("admin_session", "true", {
+            httpOnly: true,
+            secure: false,
+            sameSite: "strict",
+            path: "/",
+            maxAge: 60 * 60 * 24,
+        });
 
         return response;
     }
