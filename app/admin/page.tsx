@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const sz16 = { width: 16, height: 16, flexShrink: 0 } as const;
 const sz14 = { width: 14, height: 14, flexShrink: 0 } as const;
@@ -83,15 +84,49 @@ export default function AdminLoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [touched, setTouched] = useState({ email: false, inviteCode: false, password: false });
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
 
     const inviteErr = touched.inviteCode && inviteCode.trim() === "";
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setTouched({ email: true, inviteCode: true, password: true });
+
+        setTouched({
+            email: true,
+            inviteCode: true,
+            password: true,
+        });
+
         if (!inviteCode.trim()) return;
-        setLoading(true);
-        setTimeout(() => setLoading(false), 2000);
+
+        try {
+            setLoading(true);
+
+            const response = await fetch("/api/admin/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    inviteCode,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                router.push("/paineladm");
+                return;
+            }
+
+            alert(data.message || "Login inválido");
+        } catch {
+            alert("Erro ao fazer login");
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
