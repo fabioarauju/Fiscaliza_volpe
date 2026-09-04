@@ -8,17 +8,15 @@ import {
 
 function corStatus(status) {
   const s = status?.toLowerCase() || "";
-  if (s.includes("aprovad"))
-    return "bg-green-100 text-green-700 border-green-200";
-  if (s.includes("rejeitad")) return "bg-red-100 text-red-700 border-red-200";
-  if (s.includes("votaç"))
-    return "bg-orange-100 text-orange-700 border-orange-200";
+  if (s.includes("aprovad")) return { cor: "#3F6B4F" };
+  if (s.includes("rejeitad")) return { cor: "#8B2A2A" };
+  if (s.includes("votaç")) return { cor: "#B5511E" };
   if (s.includes("análise") || s.includes("tramitaç"))
-    return "bg-blue-100 text-blue-700 border-blue-200";
-  return "bg-gray-100 text-gray-600 border-gray-200";
+    return { cor: "#5F5E5A" };
+  return { cor: "#5F5E5A" };
 }
 
-// MODAL MINIMALISTA COM O X NO TOPO
+// MODAL
 function Modal({ projeto, onClose }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,26 +29,25 @@ function Modal({ projeto, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[85vh] overflow-y-auto border border-gray-200"
+        className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Cabeçalho com o X alinhado no topo (items-start) */}
-        <div className="p-6 border-b flex justify-between items-start bg-gray-50">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-start">
           <div className="pr-4">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+            <span className="text-sm font-medium text-blue-600">
               {projeto.tipo}
             </span>
-            <h2 className="text-base font-bold text-gray-900 leading-tight">
+            <h2 className="text-lg font-semibold text-black leading-tight mt-1">
               {projeto.titulo}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-red-500 text-xl leading-none shrink-0"
+            className="text-gray-400 hover:text-black text-xl leading-none shrink-0"
           >
             ✕
           </button>
@@ -58,43 +55,51 @@ function Modal({ projeto, onClose }) {
 
         <div className="p-6 space-y-4">
           {loading ? (
-            <p className="text-center py-10 text-xs text-gray-400 animate-pulse font-bold">
-              CARREGANDO...
+            <p className="text-center py-10 text-sm text-gray-400">
+              Carregando...
             </p>
           ) : (
             dados && (
               <>
                 <span
-                  className={`px-2 py-1 rounded text-[10px] font-bold border uppercase ${corStatus(dados.detalhes.statusProposicao?.descricaoSituacao)}`}
+                  className={`text-xs font-medium px-3 py-1 rounded-full inline-block ${corStatus(
+                    dados.detalhes.statusProposicao?.descricaoSituacao,
+                  )}`}
                 >
                   {dados.detalhes.statusProposicao?.descricaoSituacao ||
-                    "EM TRAMITAÇÃO"}
+                    "Em tramitação"}
                 </span>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 text-xs leading-relaxed text-gray-700 font-medium">
-                  <strong>Ementa:</strong> {dados.detalhes.ementa}
+
+                <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed text-gray-700">
+                  <span className="font-medium text-black">Ementa: </span>
+                  {dados.detalhes.ementa}
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-xs font-bold">
+
+                <div className="grid grid-cols-2 gap-4 text-sm pt-2">
                   <div>
-                    <p className="text-gray-400 uppercase text-[9px]">Autor</p>
-                    <p className="text-gray-800">
+                    <p className="text-xs text-gray-400">Autor</p>
+                    <p className="text-black">
                       {dados.autores[0]?.nome || "—"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400 uppercase text-[9px]">Ano</p>
-                    <p className="text-gray-800">{dados.detalhes.ano || "—"}</p>
+                    <p className="text-xs text-gray-400">Ano</p>
+                    <p className="font-mono text-black">
+                      {dados.detalhes.ano || "—"}
+                    </p>
                   </div>
                 </div>
               </>
             )
           )}
         </div>
-        <div className="p-4 border-t bg-gray-50 flex justify-end">
+
+        <div className="p-4 border-t border-gray-100 flex justify-end">
           <button
             onClick={onClose}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md font-bold text-xs hover:bg-blue-700"
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
           >
-            FECHAR
+            Fechar
           </button>
         </div>
       </div>
@@ -155,7 +160,7 @@ export default function ProjetosDeLei() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen py-6 px-4 font-sans text-gray-800">
+    <div className="bg-gray-100 min-h-screen py-12 px-4 font-sans text-black">
       {projetoSelecionado && (
         <Modal
           projeto={projetoSelecionado}
@@ -163,41 +168,35 @@ export default function ProjetosDeLei() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tighter italic">
-            Projetos de Lei
-          </h1>
-        </div>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <h1 className="text-4xl font-bold text-black">Projetos de lei</h1>
 
-        {/* Cards de Resumo Minimalistas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
-            <p className="text-[9px] font-bold text-gray-400 uppercase">
-              Total na Base
+        {/* Cards de resumo */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl shadow p-6 text-center">
+            <p className="text-gray-600">Total na base</p>
+            <p className="text-3xl font-bold font-mono text-black mt-1">
+              {projetos.length}
             </p>
-            <p className="text-xl font-bold text-gray-900">{projetos.length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm text-center">
-            <p className="text-[9px] font-bold text-gray-400 uppercase">
-              Filtrados
-            </p>
-            <p className="text-xl font-bold text-blue-600">
+          <div className="bg-white rounded-xl shadow p-6 text-center">
+            <p className="text-gray-600">Filtrados</p>
+            <p className="text-3xl font-bold font-mono text-blue-600 mt-1">
               {filtrados.length}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex items-center justify-center">
-            <p className="text-[15px] font-bold text-blue-800 italic uppercase">
-              Câmara Federal
+          <div className="bg-white rounded-xl shadow p-6 flex items-center justify-center">
+            <p className="text-sm font-medium text-gray-600">
+              Fonte: Câmara Federal
             </p>
           </div>
         </div>
 
-        {/* Busca e Filtro Ano */}
-        <div className="flex gap-2">
+       {/* Busca e filtro ano */}
+        <div className="bg-white rounded-xl shadow p-6 flex flex-wrap gap-3">
           <input
             placeholder="Buscar por título ou número..."
-            className="flex-1 bg-white p-2.5 rounded-md border border-gray-200 outline-none text-xs font-medium focus:ring-1 ring-blue-500"
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-blue-500"
             value={busca}
             onChange={(e) => {
               setBusca(e.target.value);
@@ -205,31 +204,31 @@ export default function ProjetosDeLei() {
             }}
           />
           <select
-            className="bg-white p-2.5 rounded-md border border-gray-200 outline-none text-xs font-bold text-gray-600 cursor-pointer"
+            className="border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 cursor-pointer"
             value={anoFiltro}
             onChange={(e) => {
               setAnoFiltro(e.target.value);
               setPaginaAtual(1);
             }}
           >
-            <option value="TODOS">TODOS OS ANOS</option>
+            <option value="TODOS">Todos os anos</option>
             <option value="2026">2026</option>
             <option value="2025">2025</option>
           </select>
         </div>
 
         {loading ? (
-          <p className="text-center py-10 text-xs font-bold text-gray-400 uppercase animate-pulse">
+          <p className="text-center py-10 text-sm text-gray-400">
             Sincronizando...
           </p>
         ) : (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow overflow-hidden">
             <table className="w-full text-left table-fixed">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr className="text-gray-400 font-bold text-[9px] uppercase tracking-wider">
-                  <th className="p-3 w-[20%]">ID</th>
-                  <th className="p-3 w-[55%]">Ementa</th>
-                  <th className="p-3 w-[25%] text-center">Status</th>
+              <thead className="border-b border-gray-100">
+                <tr className="text-gray-500 font-medium text-xs">
+                  <th className="p-4 pr-4 w-[18%]">ID</th>
+                  <th className="p-4 pr-4 w-[57%]">Ementa</th>
+                  <th className="p-4 w-[25%] text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -244,15 +243,15 @@ export default function ProjetosDeLei() {
                       className="hover:bg-blue-50/50 cursor-pointer transition-colors"
                       onClick={() => setProjetoSelecionado(p)}
                     >
-                      <td className="p-3 text-[11px] font-bold text-blue-600 truncate">
+                      <td className="p-4 pr-4 text-sm font-medium text-blue-600 truncate">
                         {p.tipo}
                       </td>
-                      <td className="p-3 text-[11px] text-gray-600 truncate font-medium">
+                      <td className="p-4 pr-4 text-sm text-gray-700 truncate">
                         {p.titulo}
                       </td>
-                      <td className="p-3 text-center">
+                      <td className="p-4 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded text-[9px] font-bold border uppercase whitespace-nowrap ${corStatus(p.status)}`}
+                          className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap inline-block ${corStatus(p.status)}`}
                         >
                           {p.status}
                         </span>
@@ -262,14 +261,14 @@ export default function ProjetosDeLei() {
               </tbody>
             </table>
 
-            <div className="p-3 bg-gray-50 flex items-center justify-between border-t border-gray-200">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+            <div className="p-4 flex items-center justify-between border-t border-gray-100">
+              <span className="text-xs text-gray-500 font-mono">
                 Pág {paginaAtual} / {totalPaginas || 1}
               </span>
               <div className="flex gap-1">
                 <button
                   onClick={() => setPaginaAtual(1)}
-                  className="px-2 py-1 bg-white border rounded text-[10px] font-bold disabled:opacity-30"
+                  className="px-2.5 py-1 rounded-lg text-xs border border-gray-200 disabled:opacity-30"
                   disabled={paginaAtual === 1}
                 >
                   «
@@ -278,14 +277,18 @@ export default function ProjetosDeLei() {
                   <button
                     key={n}
                     onClick={() => setPaginaAtual(n)}
-                    className={`px-2 py-1 rounded text-[10px] font-bold border ${paginaAtual === n ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 hover:bg-gray-100"}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono ${
+                      paginaAtual === n
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
                   >
                     {n}
                   </button>
                 ))}
                 <button
                   onClick={() => setPaginaAtual(totalPaginas)}
-                  className="px-2 py-1 bg-white border rounded text-[10px] font-bold disabled:opacity-30"
+                  className="px-2.5 py-1 rounded-lg text-xs border border-gray-200 disabled:opacity-30"
                   disabled={paginaAtual === totalPaginas}
                 >
                   »

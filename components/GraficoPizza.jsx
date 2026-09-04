@@ -8,16 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-
-const CORES = [
-  "#2563eb", // azul
-  "#f97316", // laranja
-  "#22c55e", // verde
-  "#eab308", // amarelo
-  "#6366f1", // indigo
-  "#ef4444", // vermelho
-  "#14b8a6", // teal
-];
+import { corSetor } from "../data/coresSetor";
 
 export default function GraficoPizza({ dados }) {
   return (
@@ -39,7 +30,7 @@ export default function GraficoPizza({ dados }) {
             paddingAngle={4}
           >
             {dados.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={CORES[index % CORES.length]} />
+              <Cell key={`cell-${index}`} fill={corSetor(entry.setor)} />
             ))}
           </Pie>
 

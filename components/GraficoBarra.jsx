@@ -1,38 +1,47 @@
 "use client";
 
 import {
-	BarChart,
-	Bar,
-	XAxis,
-	YAxis,
-	Tooltip,
-	ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
 } from "recharts";
+import { corSetor } from "../data/coresSetor";
 
 export default function GraficoBarra({ dados }) {
-	return (
-		<div className="bg-white p-6 rounded-xl shadow">
-			<h2 className="text-xl text-black font-semibold mb-4">
-				Despesas por Setor
-			</h2>
+  return (
+    <div className="bg-white p-6 rounded-xl shadow">
+      <h2 className="text-xl text-black font-semibold mb-4">
+        Despesas por Setor
+      </h2>
 
-			<ResponsiveContainer width="100%" height={300}>
-				<BarChart data={dados}>
-					<XAxis
-						dataKey="setor"
-						interval={0}
-						angle={-20}
-						textAnchor="end"
-						height={60}
-					/>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={dados} margin={{ top: 20, bottom: 40 }}>
+          <XAxis
+            dataKey="setor"
+            interval={0}
+            angle={-25}
+            textAnchor="end"
+            height={70}
+            fontSize={11}
+          />
 
-					<YAxis />
+          <YAxis />
 
-					<Tooltip />
+          <Tooltip />
 
-					<Bar dataKey="valor" fill="#2563eb" />
-				</BarChart>
-			</ResponsiveContainer>
-		</div>
-	);
+          <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+            {dados.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={corSetor(entry.setor)} />
+            ))}
+            <LabelList dataKey="valor" position="top" fontSize={11} fill="#5F5E5A" />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }

@@ -31,7 +31,7 @@ export default function GestaoPublica() {
 
         {/* FILTRO */}
 
-        <div className="bg-white p-6 rounded-xl shadow flex flex-wrap gap-6 items-end">
+        <div className="bg-white border border-black/10 p-6 flex flex-wrap gap-6 items-end">
           <label className="block text-sm text-gray-600 mb-1">
             Tipo de gasto
           </label>
@@ -61,27 +61,27 @@ export default function GestaoPublica() {
         </div>
 
         {/* INDICADORES */}
-        <div className="grid md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-600">Total Investido</p>
-            <p className="text-3xl font-bold text-black">R$ 2.36 Bi</p>
-          </div>
+<div className="grid md:grid-cols-4 gap-6">
+  <div className="bg-white border border-black/10 p-6 text-center">
+    <p className="text-gray-600">Total Investido</p>
+    <p className="text-3xl font-bold font-mono text-black">R$ 2.36 Bi</p>
+  </div>
 
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-600">Projetos Ativos</p>
-            <p className="text-3xl font-bold text-black">87</p>
-          </div>
+  <div className="bg-white border border-black/10 p-6 text-center">
+    <p className="text-gray-600">Projetos Ativos</p>
+    <p className="text-3xl font-bold font-mono text-black">87</p>
+  </div>
 
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-600">Obras em Execução</p>
-            <p className="text-3xl font-bold text-black">42</p>
-          </div>
+  <div className="bg-white border border-black/10 p-6 text-center">
+    <p className="text-gray-600">Obras em Execução</p>
+    <p className="text-3xl font-bold font-mono text-black">42</p>
+  </div>
 
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-600">Contratos Ativos</p>
-            <p className="text-3xl font-bold text-black">128</p>
-          </div>
-        </div>
+  <div className="bg-white border border-black/10 p-6 text-center">
+    <p className="text-gray-600">Contratos Ativos</p>
+    <p className="text-3xl font-bold font-mono text-black">128</p>
+  </div>
+</div>
 
         {/* RANKING */}
         <ul className="space-y-4">
@@ -143,9 +143,9 @@ export default function GestaoPublica() {
                 <td>Reforma Hospital Municipal</td>
                 <td>R$ 45 milhões</td>
                 <td>
-                  <span className="bg-green-200 text-green-800 px-2 py-1 rounded">
-                    Em execução
-                  </span>
+                  <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-medium">
+  Em execução
+</span>
                 </td>
               </tr>
 
@@ -154,9 +154,9 @@ export default function GestaoPublica() {
                 <td>Construção de Escola Técnica</td>
                 <td>R$ 28 milhões</td>
                 <td>
-                  <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
-                    Em análise
-                  </span>
+                  <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-medium">
+  Em análise
+</span>
                 </td>
               </tr>
 
@@ -165,9 +165,9 @@ export default function GestaoPublica() {
                 <td>Revitalização de Avenida Principal</td>
                 <td>R$ 120 milhões</td>
                 <td>
-                  <span className="bg-blue-200 text-blue-800 px-2 py-1 rounded">
-                    Planejamento
-                  </span>
+                  <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+  Planejamento
+</span>
                 </td>
               </tr>
             </tbody>

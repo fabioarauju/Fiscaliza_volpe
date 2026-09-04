@@ -16,17 +16,40 @@ import {
 const MapaDenuncias = dynamic(() => import("../../components/MapaDenuncias"), {
   ssr: false,
   loading: () => (
-    <div className="h-100 w-full bg-gray-200 animate-pulse rounded-xl flex items-center justify-center text-gray-700 font-bold">
+    <div className="h-[400px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400 text-sm">
       Carregando mapa...
     </div>
   ),
 });
 
-const CORES_GRAFICO = ["#1D4ED8", "#10B981", "#F97316", "#A855F7", "#EAB308"];
+// Cor por categoria (por nome, não por posição) — mesmo princípio do corSetor()
+// usado em Despesas, pra cor nunca dessincronizar entre gráfico, badges e legenda.
+const CORES_CATEGORIA = {
+  SANEAMENTO: { fill: "#378ADD", badge: "bg-blue-50 text-blue-700" },
+  AMBIENTAL: { fill: "#639922", badge: "bg-green-50 text-green-700" },
+  INFRAESTRUTURA: { fill: "#D85A30", badge: "bg-orange-50 text-orange-700" },
+  "PERTURBAÇÃO": { fill: "#7F77DD", badge: "bg-purple-50 text-purple-700" },
+  OUTROS: { fill: "#B4B2A9", badge: "bg-gray-100 text-gray-600" },
+};
+
+function corCategoria(categoria) {
+  return CORES_CATEGORIA[categoria] || CORES_CATEGORIA.OUTROS;
+}
+
+function getStatusStyle(status) {
+  const s = status?.toUpperCase().replace("_", " ");
+  if (s === "RESOLVIDO") return "bg-emerald-50 text-emerald-700";
+  if (s === "EM ANALISE" || s === "EM REALIZAÇÃO")
+    return "bg-blue-50 text-blue-700";
+  return "bg-amber-50 text-amber-700";
+}
 
 export default function DenunciasPage() {
   const [denuncias, setDenuncias] = useState([]);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState("");
+  const [sucessoEnvio, setSucessoEnvio] = useState(false);
   const [itensExibidos, setItensExibidos] = useState(5);
   const [denunciaSelecionada, setDenunciaSelecionada] = useState(null);
 
@@ -89,6 +112,10 @@ export default function DenunciasPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErroEnvio("");
+    setSucessoEnvio(false);
+    setEnviando(true);
+
     try {
       const response = await fetch("/denuncias/api", {
         method: "POST",
@@ -96,102 +123,102 @@ export default function DenunciasPage() {
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) {
-        const novaDenuncia = await response.json();
-        setDenuncias((prev) => [novaDenuncia, ...prev]);
-        alert("Denúncia enviada com sucesso!");
-        setFormData({
-          titulo: "",
-          categoria: "",
-          cep: "",
-          bairro: "",
-          cidade: "",
-          estado: "",
-          rua: "",
-          numero: "",
-          descricao: "",
-          lat: -23.55052,
-          lng: -46.633308,
-        });
+      // Lê o corpo mesmo em erro — é onde a API manda a mensagem real
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        // Mostra no console o motivo exato (coluna faltando, rota errada, etc.)
+        console.error("Falha ao enviar denúncia:", response.status, data);
+        setErroEnvio(
+          data?.error ||
+            `Não foi possível enviar (erro ${response.status}). Confira o console.`,
+        );
+        return;
       }
+
+      setDenuncias((prev) => [data, ...prev]);
+      setSucessoEnvio(true);
+      setTimeout(() => setSucessoEnvio(false), 4000);
+      setFormData({
+        titulo: "",
+        categoria: "",
+        cep: "",
+        bairro: "",
+        cidade: "",
+        estado: "",
+        rua: "",
+        numero: "",
+        descricao: "",
+        lat: -23.55052,
+        lng: -46.633308,
+      });
     } catch (err) {
-      alert("Erro ao salvar.");
+      console.error("Erro de rede ao enviar denúncia:", err);
+      setErroEnvio("Erro de conexão. Verifique sua internet e tente novamente.");
+    } finally {
+      setEnviando(false);
     }
   };
 
-  const getStatusStyle = (status) => {
-    const s = status?.toUpperCase().replace("_", " ");
-    if (s === "RESOLVIDO")
-      return "bg-green-100 text-green-700 border-green-200";
-    if (s === "EM ANALISE" || s === "EM REALIZAÇÃO")
-      return "bg-blue-100 text-blue-700 border-blue-200";
-    return "bg-yellow-100 text-yellow-700 border-yellow-200";
-  };
-
   return (
-    <div className="bg-gray-50 min-h-screen pb-20 font-sans text-gray-900">
-      <div className="w-full mb-8">
-        <MapaDenuncias denuncias={denuncias} />
-      </div>
+    <div className="bg-gray-100 min-h-screen py-12 px-4 font-sans text-black">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* MAPA */}
+        <div className="bg-white rounded-xl shadow p-4">
+          <MapaDenuncias denuncias={denuncias} />
+        </div>
 
-      <div className="max-w-4xl mx-auto px-4 space-y-12">
-        {/* Gráfico */}
-        <div className="bg-white p-8 rounded-xl shadow-md border flex flex-col items-center">
-          <h2 className="text-2xl font-black mb-6 text-blue-900 text-center uppercase tracking-tighter italic">
-            Resumo de Ocorrências
+        {/* GRÁFICO */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-xl font-semibold text-black mb-4">
+            Resumo de ocorrências
           </h2>
-          <div className="w-full h-80">
-            {denuncias.length > 0 ? (
+          {denuncias.length > 0 ? (
+            <div className="w-full h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={dadosGrafico}
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
+                    outerRadius={90}
                     dataKey="value"
                     label={({ name, percent }) =>
                       `${name} ${(percent * 100).toFixed(0)}%`
                     }
                   >
-                    {dadosGrafico.map((entry, index) => (
+                    {dadosGrafico.map((entry) => (
                       <Cell
-                        key={`cell-${index}`}
-                        fill={CORES_GRAFICO[index % CORES_GRAFICO.length]}
+                        key={entry.name}
+                        fill={corCategoria(entry.name).fill}
                       />
                     ))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "12px",
-                      border: "none",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    }}
-                  />
+                  <Tooltip />
                   <Legend verticalAlign="bottom" iconType="circle" />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 font-bold italic text-center">
-                Aguardando dados...
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="h-24 flex items-center justify-center text-gray-400 text-sm">
+              Aguardando dados...
+            </div>
+          )}
         </div>
 
         {/* FORMULÁRIO */}
-        <div className="bg-white p-8 rounded-xl shadow-md border text-black">
-          <h2 className="text-2xl font-black mb-6 text-blue-900 text-center uppercase tracking-tighter italic">
-            Nova Denúncia
+        <div className="bg-white rounded-xl shadow p-6 text-black">
+          <h2 className="text-xl font-semibold text-black mb-6">
+            Nova denúncia
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
-                Título da Denúncia
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Título da denúncia
               </label>
               <input
-                placeholder="Ex: Buraco na via, Vazamento de água..."
-                className="w-full p-3 border border-gray-400 rounded-md outline-none font-medium text-black"
+                placeholder="Ex: buraco na via, vazamento de água..."
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none text-sm focus:ring-1 focus:ring-blue-500"
                 value={formData.titulo}
                 onChange={(e) =>
                   setFormData({ ...formData, titulo: e.target.value })
@@ -201,11 +228,11 @@ export default function DenunciasPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Categoria
               </label>
               <select
-                className="w-full p-3 border border-gray-400 rounded-md outline-none font-semibold bg-white text-black"
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none text-sm bg-white cursor-pointer"
                 value={formData.categoria}
                 onChange={(e) =>
                   setFormData({ ...formData, categoria: e.target.value })
@@ -213,21 +240,21 @@ export default function DenunciasPage() {
                 required
               >
                 <option value="">Selecione uma categoria...</option>
-                <option value="SANEAMENTO">SANEAMENTO</option>
-                <option value="AMBIENTAL">AMBIENTAL</option>
-                <option value="INFRAESTRUTURA">INFRAESTRUTURA</option>
-                <option value="PERTURBAÇÃO">PERTURBAÇÃO</option>
+                <option value="SANEAMENTO">Saneamento</option>
+                <option value="AMBIENTAL">Ambiental</option>
+                <option value="INFRAESTRUTURA">Infraestrutura</option>
+                <option value="PERTURBAÇÃO">Perturbação</option>
               </select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   CEP {loadingCep && "..."}
                 </label>
                 <input
                   placeholder="00000-000"
-                  className="w-full p-3 border border-gray-400 rounded-md font-medium text-black"
+                  className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-1 focus:ring-blue-500"
                   value={formData.cep}
                   onChange={handleCepChange}
                   maxLength={9}
@@ -235,11 +262,11 @@ export default function DenunciasPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Bairro
                 </label>
                 <input
-                  className="w-full p-3 border border-gray-400 rounded-md bg-gray-100 font-semibold text-gray-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-500"
                   value={formData.bairro}
                   readOnly
                   placeholder="Seu bairro"
@@ -249,22 +276,22 @@ export default function DenunciasPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Cidade
                 </label>
                 <input
-                  className="w-full p-3 border border-gray-400 rounded-md bg-gray-100 font-semibold text-gray-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-500"
                   value={formData.cidade}
                   readOnly
                   placeholder="Sua cidade"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estado (UF)
                 </label>
                 <input
-                  className="w-full p-3 border border-gray-400 rounded-md bg-gray-100 font-semibold text-gray-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-sm text-gray-500"
                   value={formData.estado}
                   readOnly
                   placeholder="Seu estado"
@@ -273,12 +300,12 @@ export default function DenunciasPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1 uppercase">
-                Número ou Referência
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Número ou referência
               </label>
               <input
-                placeholder="Ex: 123 ou Próximo ao mercado"
-                className="w-full p-3 border border-gray-400 rounded-md outline-none font-medium text-black"
+                placeholder="Ex: 123 ou próximo ao mercado"
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none text-sm focus:ring-1 focus:ring-blue-500"
                 value={formData.numero}
                 onChange={(e) =>
                   setFormData({ ...formData, numero: e.target.value })
@@ -288,13 +315,13 @@ export default function DenunciasPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1 uppercase tracking-tight">
-                Descrição Detalhada
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descrição detalhada
               </label>
               <textarea
                 placeholder="Conte-nos o que está acontecendo..."
                 rows="3"
-                className="w-full p-3 border border-gray-400 rounded-md outline-none font-medium text-black"
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none text-sm focus:ring-1 focus:ring-blue-500"
                 value={formData.descricao}
                 onChange={(e) =>
                   setFormData({ ...formData, descricao: e.target.value })
@@ -303,49 +330,71 @@ export default function DenunciasPage() {
               />
             </div>
 
+            {erroEnvio && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                {erroEnvio}
+              </p>
+            )}
+
+            {sucessoEnvio && (
+              <p className="text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+                Denúncia enviada com sucesso.
+              </p>
+            )}
+
             <button
               type="submit"
-              disabled={loadingCep}
-              className="w-full bg-blue-700 text-white px-8 py-4 rounded-md font-black text-xl shadow-lg hover:bg-blue-800 transition-all disabled:opacity-50 uppercase italic tracking-tighter"
+              disabled={loadingCep || enviando}
+              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium text-sm shadow hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {loadingCep ? "Localizando..." : "Enviar Denúncia"}
+              {loadingCep
+                ? "Localizando..."
+                : enviando
+                  ? "Enviando..."
+                  : "Enviar denúncia"}
             </button>
           </form>
         </div>
 
-        {/* Tabela HackGov */}
-        <div className="bg-white rounded-[40px] shadow-xl border border-gray-100 overflow-hidden text-black">
+        {/* TABELA */}
+        <div className="bg-white rounded-xl shadow overflow-hidden">
           <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr className="text-gray-400 font-black uppercase text-[10px] tracking-[0.2em]">
-                <th className="p-6">Categoria</th>
-                <th className="p-6 text-center">Status</th>
-                <th className="p-6">Data</th>
-                <th className="p-6 text-center">Ação</th>
+            <thead className="border-b border-gray-100">
+              <tr className="text-gray-500 font-medium text-xs">
+                <th className="p-4">Categoria</th>
+                <th className="p-4 text-center">Status</th>
+                <th className="p-4">Data</th>
+                <th className="p-4 text-center">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {denuncias.slice(0, itensExibidos).map((d) => (
                 <tr
                   key={d.id}
-                  className="hover:bg-blue-50/30 transition-colors font-bold"
+                  className="hover:bg-blue-50/40 transition-colors"
                 >
-                  <td className="p-6 text-sm">{d.categoria}</td>
-                  <td className="p-6 text-center">
+                  <td className="p-4 text-sm">
                     <span
-                      className={`px-4 py-1.5 rounded-full text-[9px] font-black border uppercase tracking-widest ${getStatusStyle(d.status)}`}
+                      className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap inline-block ${corCategoria(d.categoria).badge}`}
                     >
-                      {d.status?.replace("_", " ") || "PENDENTE"}
+                      {d.categoria}
                     </span>
                   </td>
-                  <td className="p-6 text-sm text-gray-500 font-bold">
+                  <td className="p-4 text-center">
+                    <span
+                      className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap inline-block ${getStatusStyle(d.status)}`}
+                    >
+                      {d.status?.replace("_", " ") || "Pendente"}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm text-gray-500 font-mono">
                     {new Date(d.data).toLocaleDateString("pt-BR")}
                   </td>
                   <td
-                    className="p-6 text-sm text-blue-600 cursor-pointer font-black text-center"
+                    className="p-4 text-sm text-blue-600 cursor-pointer font-medium text-center"
                     onClick={() => setDenunciaSelecionada(d)}
                   >
-                    DETALHES ▶
+                    Detalhes →
                   </td>
                 </tr>
               ))}
@@ -354,82 +403,79 @@ export default function DenunciasPage() {
           {denuncias.length > itensExibidos && (
             <button
               onClick={() => setItensExibidos((prev) => prev + 5)}
-              className="w-full p-6 bg-gray-50/50 text-blue-600 font-black uppercase text-[10px] tracking-[0.3em] border-t"
+              className="w-full p-4 bg-gray-50 text-blue-600 font-medium text-sm border-t border-gray-100 hover:bg-gray-100"
             >
-              VER MAIS (+{denuncias.length - itensExibidos})
+              Ver mais (+{denuncias.length - itensExibidos})
             </button>
           )}
         </div>
       </div>
 
-      {/* Modal HackGov */}
+      {/* MODAL — mesmo padrão do modal de Projetos de Lei */}
       {denunciaSelecionada && (
         <div
-          className="fixed inset-0 bg-blue-900/20 z-50 flex items-center justify-center p-4 backdrop-blur-md"
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
           onClick={() => setDenunciaSelecionada(null)}
         >
           <div
-            className="bg-white rounded-[40px] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-white/20 animate-in fade-in zoom-in duration-300"
+            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-10 border-b flex justify-between items-start bg-white text-black">
-              <h3 className="text-3xl font-black text-blue-900 tracking-tighter uppercase italic">
-                {denunciaSelecionada.titulo || "DETALHES"}
-              </h3>
+            <div className="p-6 border-b border-gray-100 flex justify-between items-start">
+              <div className="pr-4">
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full inline-block ${corCategoria(denunciaSelecionada.categoria).badge}`}
+                >
+                  {denunciaSelecionada.categoria}
+                </span>
+                <h2 className="text-lg font-semibold text-black leading-tight mt-2">
+                  {denunciaSelecionada.titulo || "Detalhes"}
+                </h2>
+              </div>
               <button
                 onClick={() => setDenunciaSelecionada(null)}
-                className="text-gray-400 hover:text-red-500 transition-all font-black text-2xl"
+                className="text-gray-400 hover:text-black text-xl leading-none shrink-0"
               >
                 ✕
               </button>
             </div>
-            <div className="p-10 space-y-8 text-black">
-              <div className="flex gap-8">
-                <div>
-                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">
-                    Categoria
-                  </span>
-                  <p className="text-xl font-black">
-                    {denunciaSelecionada.categoria}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-                    Situação
-                  </span>
-                  <span
-                    className={`px-3 py-1.5 rounded-full text-[9px] font-black border uppercase tracking-widest inline-block ${getStatusStyle(denunciaSelecionada.status)}`}
-                  >
-                    {denunciaSelecionada.status?.replace("_", " ") ||
-                      "PENDENTE"}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-gray-50 p-8 rounded-3xl border border-gray-100 italic font-bold">
+
+            <div className="p-6 space-y-4">
+              <span
+                className={`text-xs font-medium px-3 py-1 rounded-full inline-block ${getStatusStyle(denunciaSelecionada.status)}`}
+              >
+                {denunciaSelecionada.status?.replace("_", " ") || "Pendente"}
+              </span>
+
+              <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed text-gray-700">
                 {denunciaSelecionada.descricao}
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">
-                  Localização
-                </span>
-                <p className="font-black text-gray-900 text-xl leading-tight">
-                  {denunciaSelecionada.bairro} -{" "}
-                  {denunciaSelecionada.cidade || ""}/
-                  {denunciaSelecionada.estado || ""}
-                </p>
-                <p className="text-gray-500 font-bold mt-1 text-sm">
-                  {denunciaSelecionada.rua || "Não informada"},{" "}
-                  {denunciaSelecionada.numero}
-                </p>
+              <div className="grid grid-cols-2 gap-4 text-sm pt-2">
+                <div>
+                  <p className="text-xs text-gray-400">Localização</p>
+                  <p className="text-black">
+                    {denunciaSelecionada.bairro} —{" "}
+                    {denunciaSelecionada.cidade || ""}/
+                    {denunciaSelecionada.estado || ""}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Endereço</p>
+                  <p className="text-black">
+                    {denunciaSelecionada.rua || "Não informada"},{" "}
+                    {denunciaSelecionada.numero}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="p-8">
+
+            <div className="p-4 border-t border-gray-100 flex justify-end">
               <button
                 onClick={() => setDenunciaSelecionada(null)}
-                className="w-full bg-blue-700 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95"
+                className="border border-gray-300 text-black px-5 py-2 rounded-lg text-sm hover:bg-gray-50"
               >
-                FECHAR DETALHES
+                Fechar
               </button>
             </div>
           </div>
