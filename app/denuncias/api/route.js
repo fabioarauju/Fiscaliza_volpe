@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  connectionTimeoutMillis: 10000, // Espera até 10 segundos para conectar
-  idleTimeoutMillis: 30000, // Mantém a conexão aberta por 30 segundos
-});
+// URL apontando exatamente para a rota do Controller no Java
+const JAVA_API_URL =
+  process.env.API_JAVA_URL ||
+  "https://fizcalizavolpe-back-end.onrender.com/denuncias";
 
-// GET: Puxa todas as denúncias (incluindo o título agora)
 export async function GET() {
   try {
-    const result = await pool.query(
-      "SELECT * FROM denuncias ORDER BY data DESC",
-    );
-    return NextResponse.json(result.rows);
+    const response = await fetch(JAVA_API_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error("Falha ao buscar na API Java");
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Erro no GET:", error);
     return NextResponse.json(
@@ -24,49 +21,37 @@ export async function GET() {
   }
 }
 
-// POST: Salva a denúncia com o campo TITULO
 export async function POST(request) {
   try {
     const body = await request.json();
-    const {
-      titulo, // Campo título adicionado
-      categoria,
-      descricao,
-      cep,
-      rua,
-      numero,
-      complemento,
-      bairro,
-      lat,
-      lng,
-    } = body;
 
-    // Query atualizada para incluir a coluna 'titulo'
-    const query = `
-      INSERT INTO denuncias (titulo, categoria, descricao, cep, rua, numero, complemento, bairro, lat, lng, data)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-      RETURNING *;
-    `;
+    const response = await fetch(JAVA_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-    const values = [
-      titulo || "Sem título", // Valor padrão caso venha vazio
-      categoria || "INFRAESTRUTURA",
-      descricao || "",
-      cep || "",
-      rua || "",
-      numero || "",
-      complemento || "",
-      bairro || "",
-      lat ? parseFloat(lat) : -23.55052,
-      lng ? parseFloat(lng) : -46.633308,
-    ];
+    // Lê como texto primeiro para não quebrar se o Java retornar uma String simples
+    const textResponse = await response.text();
+    let data;
+    try {
+      data = textResponse ? JSON.parse(textResponse) : {};
+    } catch (e) {
+      data = { message: textResponse }; // Se não for JSON, envia como mensagem
+    }
 
-    const result = await pool.query(query, values);
-    return NextResponse.json(result.rows[0]);
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.message || "Erro no Java" },
+        { status: response.status },
+      );
+    }
+
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Erro no POST:", error);
     return NextResponse.json(
-      { error: "Erro ao salvar no banco" },
+      { error: "Erro de comunicação com Java" },
       { status: 500 },
     );
   }
