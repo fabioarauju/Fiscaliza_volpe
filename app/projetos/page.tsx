@@ -6,7 +6,7 @@ import {
   buscarDetalhesProposicao,
 } from "../services/camaraApi";
 
-function corStatus(status) {
+function corStatus(status: string | undefined) {
   const s = status?.toLowerCase() || "";
   if (s.includes("aprovad")) return { cor: "#3F6B4F" };
   if (s.includes("rejeitad")) return { cor: "#8B2A2A" };
@@ -16,9 +16,10 @@ function corStatus(status) {
   return { cor: "#5F5E5A" };
 }
 
-// MODAL
-function Modal({ projeto, onClose }) {
-  const [dados, setDados] = useState(null);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function Modal({ projeto, onClose }: { projeto: any; onClose: () => void }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [dados, setDados] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +32,9 @@ function Modal({ projeto, onClose }) {
     <div
       className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Detalhes do projeto de lei"
     >
       <div
         className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[85vh] overflow-y-auto"
@@ -108,12 +112,14 @@ function Modal({ projeto, onClose }) {
 }
 
 export default function ProjetosDeLei() {
-  const [projetos, setProjetos] = useState([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [projetos, setProjetos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [busca, setBusca] = useState("");
   const [anoFiltro, setAnoFiltro] = useState("TODOS");
-  const [projetoSelecionado, setProjetoSelecionado] = useState(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [projetoSelecionado, setProjetoSelecionado] = useState<any>(null);
   const ITENS_POR_PAGINA = 10;
 
   useEffect(() => {
@@ -160,7 +166,7 @@ export default function ProjetosDeLei() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen py-12 px-4 font-sans text-black">
+    <div className="bg-gray-50 min-h-screen">
       {projetoSelecionado && (
         <Modal
           projeto={projetoSelecionado}
@@ -168,32 +174,38 @@ export default function ProjetosDeLei() {
         />
       )}
 
-      <div className="max-w-6xl mx-auto space-y-6">
-        <h1 className="text-4xl font-bold text-black">Projetos de lei</h1>
+      {/* Header */}
+      <section className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Projetos de Lei</h1>
+          <p className="text-gray-500">Proposições legislativas da Câmara Federal.</p>
+        </div>
+      </section>
 
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         {/* Cards de resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            <p className="text-gray-600">Total na base</p>
-            <p className="text-3xl font-bold font-mono text-black mt-1">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-5 text-center">
+            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total na base</div>
+            <div className="text-2xl font-bold font-mono text-gray-900 mt-1.5">
               {projetos.length}
-            </p>
+            </div>
           </div>
-          <div className="bg-white rounded-xl shadow p-6 text-center">
-            <p className="text-gray-600">Filtrados</p>
-            <p className="text-3xl font-bold font-mono text-blue-600 mt-1">
+          <div className="bg-white rounded-xl border border-gray-100 p-5 text-center">
+            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">Filtrados</div>
+            <div className="text-2xl font-bold font-mono text-blue-600 mt-1.5">
               {filtrados.length}
-            </p>
+            </div>
           </div>
-          <div className="bg-white rounded-xl shadow p-6 flex items-center justify-center">
-            <p className="text-sm font-medium text-gray-600">
-              Fonte: Câmara Federal
+          <div className="bg-white rounded-xl border border-gray-100 p-5 flex items-center justify-center">
+            <p className="text-sm text-gray-400">
+              Fonte: Câmara dos Deputados — Dados Abertos
             </p>
           </div>
         </div>
 
        {/* Busca e filtro ano */}
-        <div className="bg-white rounded-xl shadow p-6 flex flex-wrap gap-3">
+        <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-wrap gap-3">
           <input
             placeholder="Buscar por título ou número..."
             className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-blue-500"
@@ -218,12 +230,23 @@ export default function ProjetosDeLei() {
         </div>
 
         {loading ? (
-          <p className="text-center py-10 text-sm text-gray-400">
-            Sincronizando...
-          </p>
+          <div className="bg-white rounded-xl shadow p-6 space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex gap-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-28" />
+                <div className="h-4 bg-gray-200 rounded flex-1" />
+                <div className="h-4 bg-gray-200 rounded w-24" />
+              </div>
+            ))}
+          </div>
+        ) : projetos.length === 0 ? (
+          <div className="bg-white rounded-xl shadow p-10 text-center text-gray-400 text-sm">
+            Nenhum projeto encontrado na base da Câmara.
+          </div>
         ) : (
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <table className="w-full text-left table-fixed">
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left table-fixed min-w-[500px]">
               <thead className="border-b border-gray-100">
                 <tr className="text-gray-500 font-medium text-xs">
                   <th className="p-4 pr-4 w-[18%]">ID</th>
@@ -260,6 +283,7 @@ export default function ProjetosDeLei() {
                   ))}
               </tbody>
             </table>
+            </div>
 
             <div className="p-4 flex items-center justify-between border-t border-gray-100">
               <span className="text-xs text-gray-500 font-mono">

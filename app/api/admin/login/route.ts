@@ -5,10 +5,14 @@ export async function POST(req: Request) {
 
     const { email, password, inviteCode } = body;
 
+    const adminEmail = process.env.ADMIN_EMAIL ?? "admin@camara.gov.br";
+    const adminPassword = process.env.ADMIN_PASSWORD ?? "123456";
+    const adminInviteCode = process.env.ADMIN_INVITE_CODE ?? "ABC-123";
+
     if (
-        email === "admin@camara.gov.br" &&
-        password === "123456" &&
-        inviteCode === "ABC-123"
+        email === adminEmail &&
+        password === adminPassword &&
+        inviteCode === adminInviteCode
     ) {
         const response = NextResponse.json({
             success: true,

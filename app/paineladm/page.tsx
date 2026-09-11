@@ -1,1565 +1,559 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  LayoutGrid, FileText, Flag, BarChart3, Plus, Pencil, Eye,
+  Trash2, Check, Archive, LogOut, X, Loader2, RefreshCw,
+  AlertTriangle, CheckCircle2,
+} from "lucide-react";
 
-// ─── Icon sizes ───────────────────────────────────────────────
-const sz14 = { width: 14, height: 14, flexShrink: 0 } as const;
-const sz16 = { width: 16, height: 16, flexShrink: 0 } as const;
-const sz18 = { width: 18, height: 18, flexShrink: 0 } as const;
-const sz20 = { width: 20, height: 20, flexShrink: 0 } as const;
-
-// ─── Icons ────────────────────────────────────────────────────
-const IcoShield = ({ s = sz20 }: { s?: typeof sz20 }) => (
-  <svg
-    style={s}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 10c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.286z"
-    />
-  </svg>
-);
-const IcoGrid = ({ s = sz18 }: { s?: typeof sz18 }) => (
-  <svg
-    style={s}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
-    />
-  </svg>
-);
-const IcoDoc = ({ s = sz18 }: { s?: typeof sz18 }) => (
-  <svg
-    style={s}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-    />
-  </svg>
-);
-const IcoFlag = ({ s = sz18 }: { s?: typeof sz18 }) => (
-  <svg
-    style={s}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5"
-    />
-  </svg>
-);
-const IcoChart = ({ s = sz18 }: { s?: typeof sz18 }) => (
-  <svg
-    style={s}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z"
-    />
-  </svg>
-);
-const IcoEdit = () => (
-  <svg
-    style={sz14}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"
-    />
-  </svg>
-);
-const IcoEye = () => (
-  <svg
-    style={sz14}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
-const IcoTrash = () => (
-  <svg
-    style={sz14}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-    />
-  </svg>
-);
-const IcoCheck = () => (
-  <svg
-    style={sz14}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M4.5 12.75l6 6 9-13.5"
-    />
-  </svg>
-);
-const IcoArchive = () => (
-  <svg
-    style={sz14}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-    />
-  </svg>
-);
-const IcoPlus = () => (
-  <svg
-    style={sz16}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M12 4.5v15m7.5-7.5h-15"
-    />
-  </svg>
-);
-const IcoBell = () => (
-  <svg
-    style={sz18}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
-    />
-  </svg>
-);
-const IcoUser = () => (
-  <svg
-    style={sz18}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
-
-// ─── Data ─────────────────────────────────────────────────────
+// ─── Static Data (projetos & gastos) ─────────────────────────
 const secretarias = [
-  { nome: "Saúde", valor: 42.5, cor: "#3b82f6" },
-  { nome: "Educação", valor: 31.2, cor: "#8b5cf6" },
-  { nome: "Infraestrutura", valor: 18.7, cor: "#f97316" },
-  { nome: "Segurança", valor: 14.3, cor: "#10b981" },
-  { nome: "Cultura", valor: 6.8, cor: "#f59e0b" },
-  { nome: "Meio Ambiente", valor: 5.1, cor: "#06b6d4" },
+  { nome: "Saúde", valor: 42.5 },
+  { nome: "Educação", valor: 31.2 },
+  { nome: "Infraestrutura", valor: 18.7 },
+  { nome: "Segurança", valor: 14.3 },
+  { nome: "Cultura", valor: 6.8 },
+  { nome: "Meio Ambiente", valor: 5.1 },
 ];
 
-const projetos = [
-  {
-    num: "PL-001/2025",
-    titulo: "Reforma do Calçadão Central",
-    cat: "Infraestrutura",
-    status: "Em votação",
-    votos: 12,
-  },
-  {
-    num: "PL-002/2025",
-    titulo: "Programa Saúde nas Escolas",
-    cat: "Saúde",
-    status: "Aprovado",
-    votos: 21,
-  },
-  {
-    num: "PL-003/2025",
-    titulo: "Incentivo à Cultura Local",
-    cat: "Cultura",
-    status: "Em análise",
-    votos: 7,
-  },
-  {
-    num: "PL-004/2025",
-    titulo: "Ampliação do Parque Municipal",
-    cat: "Meio Ambiente",
-    status: "Rascunho",
-    votos: 0,
-  },
-  {
-    num: "PL-005/2025",
-    titulo: "Câmeras de Segurança em Praças",
-    cat: "Segurança",
-    status: "Aprovado",
-    votos: 19,
-  },
-  {
-    num: "PL-006/2025",
-    titulo: "Bolsa Estudante Universitário",
-    cat: "Educação",
-    status: "Rejeitado",
-    votos: 4,
-  },
-];
-
-const denunciasIniciais = [
-  {
-    id: "DN-081",
-    desc: "Buraco na Rua das Flores nº 42",
-    local: "Centro",
-    status: "Pendente",
-    data: "09/05/2026",
-  },
-  {
-    id: "DN-080",
-    desc: "Iluminação apagada na Av. Brasil",
-    local: "Jardim Norte",
-    status: "Em análise",
-    data: "08/05/2026",
-  },
-  {
-    id: "DN-079",
-    desc: "Esgoto a céu aberto no Bairro Novo",
-    local: "Bairro Novo",
-    status: "Aprovada",
-    data: "07/05/2026",
-  },
-  {
-    id: "DN-078",
-    desc: "Pichação em patrimônio histórico",
-    local: "Centro Histórico",
-    status: "Arquivada",
-    data: "05/05/2026",
-  },
-  {
-    id: "DN-077",
-    desc: "Lixo acumulado na Praça da Paz",
-    local: "Vila Alta",
-    status: "Pendente",
-    data: "04/05/2026",
-  },
-  {
-    id: "DN-076",
-    desc: "Semáforo quebrado na Av. Central",
-    local: "Centro",
-    status: "Em análise",
-    data: "03/05/2026",
-  },
-];
-
-const atividades = [
-  {
-    acao: "PL-002/2025 aprovado em votação",
-    tempo: "há 2 horas",
-    tipo: "success",
-  },
-  {
-    acao: "Nova denúncia DN-081 registrada",
-    tempo: "há 3 horas",
-    tipo: "warn",
-  },
-  { acao: "Gastos de Saúde atualizados", tempo: "há 5 horas", tipo: "info" },
-  { acao: "DN-078 arquivada pelo admin", tempo: "há 1 dia", tipo: "neutral" },
-  {
-    acao: "PL-006/2025 rejeitado em plenário",
-    tempo: "há 2 dias",
-    tipo: "danger",
-  },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────
-const statusProjetoCor: Record<string, { bg: string; color: string }> = {
-  Aprovado: { bg: "#dcfce7", color: "#166534" },
-  "Em votação": { bg: "#dbeafe", color: "#1e40af" },
-  "Em análise": { bg: "#fef9c3", color: "#854d0e" },
-  Rascunho: { bg: "#f1f5f9", color: "#475569" },
-  Rejeitado: { bg: "#fee2e2", color: "#991b1b" },
-};
-const statusDenunciaCor: Record<string, { bg: string; color: string }> = {
-  Pendente: { bg: "#fee2e2", color: "#991b1b" },
-  "Em análise": { bg: "#fef9c3", color: "#854d0e" },
-  Aprovada: { bg: "#dcfce7", color: "#166534" },
-  Arquivada: { bg: "#f1f5f9", color: "#475569" },
-};
-const atividadeDot: Record<string, string> = {
-  success: "#10b981",
-  warn: "#f59e0b",
-  info: "#3b82f6",
-  neutral: "#94a3b8",
-  danger: "#ef4444",
+const secretariasHex: Record<string, string> = {
+  "Saúde": "#3b82f6", "Educação": "#8b5cf6", "Infraestrutura": "#f97316",
+  "Segurança": "#10b981", "Cultura": "#f59e0b", "Meio Ambiente": "#06b6d4",
 };
 
-const totalGastos = secretarias.reduce((a, s) => a + s.valor, 0);
+const categoriaCor: Record<string, string> = {
+  SANEAMENTO: "#378ADD", AMBIENTAL: "#639922", INFRAESTRUTURA: "#D85A30",
+  "PERTURBAÇÃO": "#7F77DD", OUTROS: "#B4B2A9",
+};
 
-// ─── Pie chart SVG ────────────────────────────────────────────
-function PieChart() {
-  const cx = 100;
-  const cy = 100;
-  const r = 80;
-  let angle = -Math.PI / 2;
-  const slices = secretarias.map((s) => {
-    const slice = (s.valor / totalGastos) * 2 * Math.PI;
-    const x1 = cx + r * Math.cos(angle);
-    const y1 = cy + r * Math.sin(angle);
-    angle += slice;
-    const x2 = cx + r * Math.cos(angle);
-    const y2 = cy + r * Math.sin(angle);
-    const large = slice > Math.PI ? 1 : 0;
-    return {
-      d: `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`,
-      cor: s.cor,
-    };
-  });
-  return (
-    <svg viewBox="0 0 200 200" style={{ width: 200, height: 200 }}>
-      {slices.map((s, i) => (
-        <path key={i} d={s.d} fill={s.cor} stroke="#fff" strokeWidth={2} />
-      ))}
-    </svg>
-  );
+const projetosFixos = [
+  { num: "PL-001/2025", titulo: "Reforma do Calçadão Central", cat: "Infraestrutura", status: "Em votação", votos: 12 },
+  { num: "PL-002/2025", titulo: "Programa Saúde nas Escolas", cat: "Saúde", status: "Aprovado", votos: 21 },
+  { num: "PL-003/2025", titulo: "Incentivo à Cultura Local", cat: "Cultura", status: "Em análise", votos: 7 },
+  { num: "PL-004/2025", titulo: "Ampliação do Parque Municipal", cat: "Meio Ambiente", status: "Rascunho", votos: 0 },
+  { num: "PL-005/2025", titulo: "Câmeras de Segurança em Praças", cat: "Segurança", status: "Aprovado", votos: 19 },
+  { num: "PL-006/2025", titulo: "Bolsa Estudante Universitário", cat: "Educação", status: "Rejeitado", votos: 4 },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────
+const statusProjetoCor: Record<string, string> = {
+  Aprovado: "bg-green-50 text-green-800", "Em votação": "bg-blue-50 text-blue-800",
+  "Em análise": "bg-yellow-50 text-yellow-800", Rascunho: "bg-gray-100 text-gray-600",
+  Rejeitado: "bg-red-50 text-red-800",
+};
+
+const statusDenunciaCor: Record<string, string> = {
+  PENDENTE: "bg-red-50 text-red-800", EM_ANALISE: "bg-yellow-50 text-yellow-800",
+  RESOLVIDO: "bg-green-50 text-green-800", ARQUIVADA: "bg-gray-100 text-gray-600",
+};
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    PENDENTE: "Pendente", EM_ANALISE: "Em análise", RESOLVIDO: "Resolvido", ARQUIVADA: "Arquivada",
+  };
+  return labels[status] || status;
 }
 
-// ─── Bar chart ────────────────────────────────────────────────
-function BarChart() {
-  const max = Math.max(...secretarias.map((s) => s.valor));
+// ─── Toast component ────────────────────────────────────────
+interface Toast {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+}
+
+function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "flex-end",
-        gap: 12,
-        height: 140,
-        padding: "0 4px",
-      }}
-    >
-      {secretarias.map((s) => (
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2">
+      {toasts.map((t) => (
         <div
-          key={s.nome}
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 4,
-          }}
+          key={t.id}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium animate-[slideIn_0.3s_ease-out] ${
+            t.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+            t.type === "error" ? "bg-red-50 border-red-200 text-red-800" :
+            "bg-blue-50 border-blue-200 text-blue-800"
+          }`}
         >
-          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>
-            R${s.valor}M
-          </span>
-          <div
-            style={{
-              width: "100%",
-              borderRadius: "4px 4px 0 0",
-              height: `${(s.valor / max) * 100}px`,
-              background: s.cor,
-              minHeight: 4,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 10,
-              color: "#94a3b8",
-              textAlign: "center",
-              lineHeight: 1.2,
-            }}
-          >
-            {s.nome}
-          </span>
+          {t.type === "success" ? <CheckCircle2 size={16} /> :
+           t.type === "error" ? <AlertTriangle size={16} /> :
+           <Flag size={16} />}
+          {t.message}
+          <button onClick={() => onRemove(t.id)} className="ml-2 opacity-60 hover:opacity-100">
+            <X size={14} />
+          </button>
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────
+// ─── SVG Charts ──────────────────────────────────────────────
+function PieChartSVG({ data }: { data: { nome: string; valor: number }[] }) {
+  const total = data.reduce((a, s) => a + s.valor, 0);
+  const cx = 100, cy = 100, r = 80;
+  let angle = -Math.PI / 2;
+  const slices = data.map((s) => {
+    const slice = (s.valor / total) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(angle);
+    const y1 = cy + r * Math.sin(angle);
+    angle += slice;
+    const x2 = cx + r * Math.cos(angle);
+    const y2 = cy + r * Math.sin(angle);
+    const large = slice > Math.PI ? 1 : 0;
+    return { d: `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`, cor: secretariasHex[s.nome] || "#94a3b8" };
+  });
+  return (
+    <svg viewBox="0 0 200 200" className="w-[200px] h-[200px] mx-auto">
+      {slices.map((s, i) => <path key={i} d={s.d} fill={s.cor} stroke="#fff" strokeWidth={2} />)}
+    </svg>
+  );
+}
+
+function BarChartSVG({ data }: { data: { nome: string; valor: number }[] }) {
+  const max = Math.max(...data.map((s) => s.valor));
+  return (
+    <div className="flex items-end gap-3 h-[140px] px-1">
+      {data.map((s) => (
+        <div key={s.nome} className="flex-1 flex flex-col items-center gap-1">
+          <span className="text-[11px] text-gray-500 font-medium">R${s.valor}M</span>
+          <div
+            className="w-full rounded-t"
+            style={{ height: `${(s.valor / max) * 100}px`, background: secretariasHex[s.nome] || "#94a3b8", minHeight: 4 }}
+          />
+          <span className="text-[10px] text-gray-400 text-center leading-tight">{s.nome}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniBarChart({ data }: { data: { label: string; value: number; color: string }[] }) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  return (
+    <div className="flex flex-col gap-2">
+      {data.map((d) => (
+        <div key={d.label} className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 w-28 shrink-0 truncate">{d.label}</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(d.value / max) * 100}%`, background: d.color }} />
+          </div>
+          <span className="text-xs font-semibold text-gray-700 w-8 text-right">{d.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Reusable components ─────────────────────────────────────
+function Badge({ status, map }: { status: string; map: Record<string, string> }) {
+  const cls = map[status] ?? "bg-gray-100 text-gray-600";
+  return <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${cls}`}>{statusLabel(status)}</span>;
+}
+
+function ActBtn({ onClick, title, children, danger, loading }: { onClick: () => void; title: string; children: React.ReactNode; danger?: boolean; loading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      disabled={loading}
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-md border cursor-pointer transition hover:brightness-95 disabled:opacity-50 ${
+        danger ? "border-red-300 bg-red-50 text-red-600" : "border-gray-200 bg-gray-50 text-gray-500"
+      }`}
+    >
+      {loading ? <Loader2 size={14} className="animate-spin" /> : children}
+    </button>
+  );
+}
+
+function Metric({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl p-5" style={{ borderTopWidth: 3, borderTopColor: color }}>
+      <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1.5">{label}</div>
+      <div className="text-[28px] font-bold text-gray-900 leading-none">{value}</div>
+      <div className="text-xs text-gray-500 mt-1.5">{sub}</div>
+    </div>
+  );
+}
+
+// ─── Denuncias interface ─────────────────────────────────────
+interface Denuncia {
+  id: string;
+  titulo: string;
+  categoria: string;
+  descricao: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  rua: string;
+  numero: string;
+  status: string;
+  data: string;
+  cep: string;
+}
+
+interface Estatisticas {
+  total: number;
+  pendentes: number;
+  emAnalise: number;
+  resolvidas: number;
+  arquivadas: number;
+  porCategoria: Record<string, number>;
+  porMes: Record<string, number>;
+}
+
+// ─── Main ────────────────────────────────────────────────────
 type Tab = "painel" | "projetos" | "denuncias" | "gastos";
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("painel");
-  const [denunciasData, setDenunciasData] = useState(denunciasIniciais);
-  const [gastosData, setGastosData] = useState(
-    secretarias.map((s) => ({ ...s })),
-  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [denuncias, setDenuncias] = useState<Denuncia[]>([]);
+  const [loadingDenuncias, setLoadingDenuncias] = useState(true);
+  const [erroDenuncias, setErroDenuncias] = useState("");
+  const [atualizando, setAtualizando] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<string | null>(null);
+  const [gastosData, setGastosData] = useState(secretarias.map((s) => ({ ...s })));
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editVal, setEditVal] = useState("");
   const [filtroDenuncia, setFiltroDenuncia] = useState("Todas");
+  const [denunciaSelecionada, setDenunciaSelecionada] = useState<Denuncia | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [stats, setStats] = useState<Estatisticas | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const [denunciaSelecionada, setDenunciaSelecionada] = useState<any>(null);
+  let toastCounter = 0;
+  function addToast(message: string, type: Toast["type"] = "success") {
+    const id = Date.now() + toastCounter++;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }
 
-  const pendentes = denunciasData.filter((d) => d.status === "Pendente").length;
+  function removeToast(id: number) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  const carregarDenuncias = useCallback(async () => {
+    try {
+      setLoadingDenuncias(true);
+      setErroDenuncias("");
+      const res = await fetch("/denuncias/api");
+      const data = await res.json();
+      if (Array.isArray(data)) setDenuncias(data);
+    } catch {
+      setErroDenuncias("Erro ao carregar denúncias do servidor.");
+    } finally {
+      setLoadingDenuncias(false);
+    }
+  }, []);
+
+  const carregarEstatisticas = useCallback(async () => {
+    try {
+      const res = await fetch("/denuncias/api/estatisticas");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch {
+      // stats are optional
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarDenuncias();
+    carregarEstatisticas();
+  }, [carregarDenuncias, carregarEstatisticas]);
+
+  const pendentes = denuncias.filter((d) => d.status === "PENDENTE").length;
+
+  async function atualizarStatus(id: string, novoStatus: string) {
+    setAtualizando(id);
+    try {
+      const res = await fetch("/api/admin/denuncias", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: novoStatus }),
+      });
+      setDenuncias((prev) => prev.map((d) => d.id === id ? { ...d, status: novoStatus } : d));
+      if (res.ok) {
+        addToast(`Denúncia atualizada para "${statusLabel(novoStatus)}"`, "success");
+      } else {
+        addToast("Atualizado localmente — servidor pode estar indisponível", "info");
+      }
+    } catch {
+      setDenuncias((prev) => prev.map((d) => d.id === id ? { ...d, status: novoStatus } : d));
+      addToast("Atualizado localmente — erro de conexão", "info");
+    } finally {
+      setAtualizando(null);
+    }
+  }
+
+  async function excluirDenuncia(id: string) {
+    setExcluindo(id);
+    try {
+      const res = await fetch("/api/admin/denuncias", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setDenuncias((prev) => prev.filter((d) => d.id !== id));
+        addToast("Denúncia excluída com sucesso", "success");
+      } else {
+        addToast("Erro ao excluir denúncia no servidor", "error");
+      }
+    } catch {
+      addToast("Erro de conexão ao excluir", "error");
+    } finally {
+      setExcluindo(null);
+      setConfirmDelete(null);
+    }
+  }
 
   function saveEdit(i: number) {
     const v = parseFloat(editVal);
     if (!isNaN(v) && v >= 0) {
-      setGastosData((prev) =>
-        prev.map((s, idx) => (idx === i ? { ...s, valor: v } : s)),
-      );
+      setGastosData((prev) => prev.map((s, idx) => (idx === i ? { ...s, valor: v } : s)));
     }
     setEditIdx(null);
   }
 
-  const denunciasFiltradas =
-    filtroDenuncia === "Todas"
-      ? denunciasData
-      : denunciasData.filter((d) => d.status === filtroDenuncia);
+  const denunciasFiltradas = filtroDenuncia === "Todas"
+    ? denuncias
+    : denuncias.filter((d) => d.status === filtroDenuncia);
   const totalEdit = gastosData.reduce((a, s) => a + s.valor, 0);
-  function atualizarStatusDenuncia(id: string, novoStatus: string) {
-    const hoje = new Date().toLocaleDateString("pt-BR");
 
-    setDenunciasData((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              status: novoStatus,
-              data: hoje,
-            }
-          : d,
-      ),
-    );
-  }
+  const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "painel", label: "Visão Geral", icon: <LayoutGrid size={18} /> },
+    { id: "projetos", label: "Projetos de Lei", icon: <FileText size={18} /> },
+    { id: "denuncias", label: "Denúncias", icon: <Flag size={18} /> },
+    { id: "gastos", label: "Gastos Públicos", icon: <BarChart3 size={18} /> },
+  ];
 
-  // ── Sidebar nav item
-  const NavItem = ({
-    id,
-    label,
-    icon,
-  }: {
-    id: Tab;
-    label: string;
-    icon: React.ReactNode;
-  }) => {
-    const active = tab === id;
-    return (
-      <button
-        onClick={() => setTab(id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "10px 16px",
-          borderRadius: 8,
-          width: "100%",
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
-          background: active ? "#eff6ff" : "transparent",
-          color: active ? "#2563eb" : "#374151",
-          fontWeight: active ? 600 : 400,
-          fontSize: 14,
-          position: "relative",
-        }}
-      >
-        {icon}
-        {label}
-        {id === "denuncias" && pendentes > 0 && (
-          <span
-            style={{
-              marginLeft: "auto",
-              background: "#ef4444",
-              color: "#fff",
-              fontSize: 11,
-              fontWeight: 700,
-              borderRadius: 10,
-              padding: "1px 7px",
-              minWidth: 20,
-              textAlign: "center",
-            }}
-          >
-            {pendentes}
-          </span>
-        )}
-      </button>
-    );
-  };
+  const thClass = "px-3.5 py-2.5 text-xs font-semibold text-gray-400 text-left whitespace-nowrap border-b border-gray-100 bg-gray-50";
+  const tdClass = "px-3.5 py-3 text-sm text-gray-900 border-b border-gray-50 align-middle";
 
-  // ── Metric card
-  const Metric = ({
-    label,
-    value,
-    sub,
-    color,
-  }: {
-    label: string;
-    value: string;
-    sub: string;
-    color: string;
-  }) => (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid #f1f5f9",
-        borderRadius: 12,
-        padding: "20px 24px",
-        borderTop: `3px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 12,
-          color: "#94a3b8",
-          fontWeight: 500,
-          marginBottom: 6,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 28,
-          fontWeight: 700,
-          color: "#1e293b",
-          lineHeight: 1,
-        }}
-      >
-        {value}
-      </div>
-      <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>{sub}</div>
-    </div>
-  );
+  const statsCategoria = stats?.porCategoria
+    ? Object.entries(stats.porCategoria).map(([label, value]) => ({
+        label,
+        value: value as number,
+        color: categoriaCor[label] || "#94a3b8",
+      }))
+    : [];
 
-  // ── Status badge
-  const Badge = ({
-    status,
-    map,
-  }: {
-    status: string;
-    map: Record<string, { bg: string; color: string }>;
-  }) => {
-    const c = map[status] ?? { bg: "#f1f5f9", color: "#475569" };
-    return (
-      <span
-        style={{
-          background: c.bg,
-          color: c.color,
-          fontSize: 12,
-          fontWeight: 600,
-          padding: "3px 10px",
-          borderRadius: 20,
-        }}
-      >
-        {status}
-      </span>
-    );
-  };
-
-  // ── Action button
-  const ActBtn = ({
-    onClick,
-    title,
-    children,
-    danger,
-  }: {
-    onClick: () => void;
-    title: string;
-    children: React.ReactNode;
-    danger?: boolean;
-  }) => (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 28,
-        borderRadius: 6,
-        border: `1px solid ${danger ? "#fca5a5" : "#e2e8f0"}`,
-        background: danger ? "#fff1f2" : "#f8fafc",
-        color: danger ? "#dc2626" : "#475569",
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-
-  // ── Table styles
-  const th: React.CSSProperties = {
-    padding: "10px 14px",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#94a3b8",
-    textAlign: "left",
-    whiteSpace: "nowrap",
-    borderBottom: "1px solid #f1f5f9",
-    background: "#f8fafc",
-  };
-  const td: React.CSSProperties = {
-    padding: "12px 14px",
-    fontSize: 13,
-    color: "#1e293b",
-    borderBottom: "1px solid #f8fafc",
-    verticalAlign: "middle",
-  };
+  const statsMes = stats?.porMes
+    ? Object.entries(stats.porMes).map(([label, value]) => ({
+        label,
+        value: value as number,
+        color: "#3b82f6",
+      }))
+    : [];
 
   return (
-    <>
-      <style>{`
-        * { box-sizing: border-box; }
-        body { margin: 0; }
-        .nav-item:hover { background: #f8fafc !important; }
-        .act-btn:hover { filter: brightness(0.95); }
-        .row:hover td { background: #fafafa !important; }
-        input:focus { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); border-color: #3b82f6 !important; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
-      `}</style>
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f8fafc",
-          display: "flex",
-          flexDirection: "column",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-        }}
-      >
-        {/* ══ BODY ════════════════════════════════════════════ */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {/* ── Sidebar ── */}
-          <aside
-            style={{
-              width: 220,
-              background: "#fff",
-              borderRight: "1px solid #f1f5f9",
-              display: "flex",
-              flexDirection: "column",
-              padding: "20px 12px",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#94a3b8",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                padding: "0 16px",
-                marginBottom: 8,
-              }}
-            >
-              Navegação
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-gray-900/55 flex items-center justify-center z-[999] p-5" role="dialog" aria-modal="true">
+          <div className="w-full max-w-[380px] bg-white rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900">Excluir denúncia?</div>
+                <div className="text-xs text-gray-500">Essa ação não pode ser desfeita.</div>
+              </div>
             </div>
-            <NavItem
-              id="painel"
-              label="Visão Geral"
-              icon={<IcoGrid s={sz18} />}
-            />
-            <NavItem
-              id="projetos"
-              label="Projetos de Lei"
-              icon={<IcoDoc s={sz18} />}
-            />
-            <NavItem
-              id="denuncias"
-              label="Denúncias"
-              icon={<IcoFlag s={sz18} />}
-            />
-            <NavItem
-              id="gastos"
-              label="Gastos Públicos"
-              icon={<IcoChart s={sz18} />}
-            />
-            <div style={{ flex: 1 }} />
-            <div
-              style={{
-                borderTop: "1px solid #f1f5f9",
-                paddingTop: 16,
-                margin: "0 4px",
-              }}
-            >
-              <div
-                style={{
-                  borderTop: "1px solid #f1f5f9",
-                  paddingTop: 16,
-                  margin: "0 4px",
-                }}
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
               >
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                  Sessão ativa
+                Cancelar
+              </button>
+              <button
+                onClick={() => excluirDenuncia(confirmDelete)}
+                disabled={excluindo === confirmDelete}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {excluindo === confirmDelete ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile top bar */}
+      <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-100 px-4 py-3">
+        <span className="text-sm font-semibold text-gray-900">Painel Admin</span>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600">
+          {sidebarOpen ? <X size={18} /> : <LayoutGrid size={18} />}
+        </button>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* ── Sidebar ── */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`fixed md:relative z-50 md:z-auto top-0 left-0 h-full w-[260px] md:w-[220px] bg-white border-r border-gray-100 flex flex-col p-5 shrink-0 transform transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
+          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-4 mb-2">
+            Navegação
+          </div>
+          {navItems.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+                className={`flex items-center gap-2.5 px-4 py-2.5 rounded-lg w-full text-left text-sm transition ${
+                  active ? "bg-blue-50 text-blue-600 font-semibold" : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {item.icon}
+                {item.label}
+                {item.id === "denuncias" && pendentes > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[11px] font-bold rounded-full px-1.5 min-w-[20px] text-center">
+                    {pendentes}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="flex-1" />
+
+          <div className="border-t border-gray-100 pt-4 mt-4">
+            <div className="text-xs text-gray-400">Sessão ativa</div>
+            <div className="text-sm text-gray-700 font-medium mt-0.5">admin@camara.gov.br</div>
+            <button
+              onClick={async () => {
+                await fetch("/api/admin/logout", { method: "POST" });
+                window.location.href = "/admin";
+              }}
+              className="mt-3 w-full py-2.5 px-3 rounded-lg border border-red-200 bg-red-50 text-red-600 text-sm font-semibold cursor-pointer hover:bg-red-100 transition flex items-center justify-center gap-2"
+            >
+              <LogOut size={14} />
+              Sair do painel
+            </button>
+          </div>
+        </aside>
+
+        {/* ── Content ── */}
+        <main className="flex-1 overflow-auto p-4 md:p-7">
+          {/* ════ PAINEL ════ */}
+          {tab === "painel" && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Visão Geral</h2>
+              <p className="text-sm text-gray-500 mb-6">Resumo das atividades do painel.</p>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
+                <Metric label="Total de Denúncias" value={String(stats?.total ?? denuncias.length)} sub={`${stats?.pendentes ?? pendentes} pendentes`} color="#ef4444" />
+                <Metric label="Em Análise" value={String(stats?.emAnalise ?? denuncias.filter(d => d.status === "EM_ANALISE").length)} sub="em andamento" color="#f59e0b" />
+                <Metric label="Resolvidas" value={String(stats?.resolvidas ?? denuncias.filter(d => d.status === "RESOLVIDO").length)} sub="concluídas" color="#10b981" />
+                <Metric label="Arquivadas" value={String(stats?.arquivadas ?? denuncias.filter(d => d.status === "ARQUIVADA").length)} sub="finalizadas" color="#6b7280" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                <div className="bg-white border border-gray-100 rounded-xl p-5">
+                  <div className="text-sm font-semibold text-gray-900 mb-1">Por Categoria</div>
+                  <div className="text-xs text-gray-400 mb-4">Distribuição de denúncias</div>
+                  {statsCategoria.length > 0 ? (
+                    <MiniBarChart data={statsCategoria} />
+                  ) : (
+                    <div className="text-sm text-gray-400 py-4 text-center">Carregando...</div>
+                  )}
                 </div>
 
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "#374151",
-                    fontWeight: 500,
-                    marginTop: 2,
-                  }}
-                >
-                  admin@camara.gov.br
+                <div className="bg-white border border-gray-100 rounded-xl p-5">
+                  <div className="text-sm font-semibold text-gray-900 mb-1">Por Mês</div>
+                  <div className="text-xs text-gray-400 mb-4">Evolução temporal</div>
+                  {statsMes.length > 0 ? (
+                    <MiniBarChart data={statsMes} />
+                  ) : (
+                    <div className="text-sm text-gray-400 py-4 text-center">Carregando...</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
+                <div className="bg-white border border-gray-100 rounded-xl p-5">
+                  <div className="text-sm font-semibold text-gray-900 mb-1">Gastos por Secretaria (R$ milhões)</div>
+                  <div className="text-xs text-gray-400 mb-5">Orçamento 2026</div>
+                  <BarChartSVG data={gastosData} />
                 </div>
 
-                <button
-                  onClick={async () => {
-                    await fetch("/api/admin/logout", {
-                      method: "POST",
-                    });
+                <div className="bg-white border border-gray-100 rounded-xl p-5">
+                  <div className="text-sm font-semibold text-gray-900 mb-4">Denúncias Recentes</div>
+                  {loadingDenuncias ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={20} className="animate-spin text-gray-400" />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {denuncias.slice(0, 5).map((d) => (
+                        <div key={d.id} className="flex gap-3 items-start">
+                          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                            d.status === "PENDENTE" ? "bg-red-500" :
+                            d.status === "EM_ANALISE" ? "bg-amber-500" :
+                            d.status === "RESOLVIDO" ? "bg-emerald-500" : "bg-gray-400"
+                          }`} />
+                          <div className="min-w-0">
+                            <div className="text-sm text-gray-700 leading-snug truncate">{d.titulo}</div>
+                            <div className="text-[11px] text-gray-400 mt-0.5">{d.bairro} — {statusLabel(d.status)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-                    window.location.href = "/admin";
-                  }}
-                  style={{
-                    marginTop: 12,
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #fecaca",
-                    background: "#fef2f2",
-                    color: "#dc2626",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Sair do painel
+          {/* ════ PROJETOS ════ */}
+          {tab === "projetos" && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Projetos de Lei</h2>
+                  <p className="text-sm text-gray-500">{projetosFixos.length} projetos cadastrados</p>
+                </div>
+                <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition">
+                  <Plus size={16} /> Novo Projeto
                 </button>
               </div>
 
-              <button
-                onClick={async () => {
-                  await fetch("/api/admin/logout", {
-                    method: "POST",
-                  });
-
-                  window.location.href = "/admin";
-                }}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #fee2e2",
-                  background: "#fff1f2",
-                  color: "#dc2626",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Sair do painel
-              </button>
-            </div>
-          </aside>
-
-          {/* ── Content ── */}
-          <main style={{ flex: 1, overflow: "auto", padding: "28px 32px" }}>
-            {/* ════ PAINEL ════ */}
-            {tab === "painel" && (
-              <div>
-                <h2
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 700,
-                    color: "#1e293b",
-                    margin: "0 0 4px",
-                  }}
-                >
-                  Visão Geral
-                </h2>
-                <p
-                  style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px" }}
-                >
-                  Resumo das atividades do painel.
-                </p>
-
-                {/* Métricas */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
-                    gap: 16,
-                    marginBottom: 28,
-                  }}
-                >
-                  <Metric
-                    label="Denúncias"
-                    value="81"
-                    sub={`${pendentes} pendentes`}
-                    color="#ef4444"
-                  />
-                  <Metric
-                    label="Projetos de Lei"
-                    value="6"
-                    sub="2 aprovados"
-                    color="#3b82f6"
-                  />
-                  <Metric
-                    label="Visitantes (mês)"
-                    value="4.320"
-                    sub="+12% vs. anterior"
-                    color="#10b981"
-                  />
-                  <Metric
-                    label="Pendências"
-                    value={String(pendentes)}
-                    sub="requerem ação"
-                    color="#f59e0b"
-                  />
-                </div>
-
-                {/* Gráfico + Feed */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 340px",
-                    gap: 20,
-                  }}
-                >
-                  {/* Bar chart */}
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #f1f5f9",
-                      borderRadius: 12,
-                      padding: "20px 24px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#1e293b",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Gastos por Secretaria (R$ milhões)
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#94a3b8",
-                        marginBottom: 20,
-                      }}
-                    >
-                      Orçamento 2026
-                    </div>
-                    <BarChart />
-                  </div>
-
-                  {/* Feed */}
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #f1f5f9",
-                      borderRadius: 12,
-                      padding: "20px 24px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#1e293b",
-                        marginBottom: 16,
-                      }}
-                    >
-                      Atividade Recente
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 14,
-                      }}
-                    >
-                      {atividades.map((a, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            gap: 12,
-                            alignItems: "flex-start",
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 4,
-                              background: atividadeDot[a.tipo],
-                              marginTop: 5,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 13,
-                                color: "#374151",
-                                lineHeight: 1.4,
-                              }}
-                            >
-                              {a.acao}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 11,
-                                color: "#94a3b8",
-                                marginTop: 2,
-                              }}
-                            >
-                              {a.tempo}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ════ PROJETOS ════ */}
-            {tab === "projetos" && (
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 24,
-                  }}
-                >
-                  <div>
-                    <h2
-                      style={{
-                        fontSize: 20,
-                        fontWeight: 700,
-                        color: "#1e293b",
-                        margin: "0 0 4px",
-                      }}
-                    >
-                      Projetos de Lei
-                    </h2>
-                    <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
-                      {projetos.length} projetos cadastrados
-                    </p>
-                  </div>
-                  <button
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "9px 18px",
-                      borderRadius: 8,
-                      background: "#3b82f6",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 600,
-                    }}
-                  >
-                    <IcoPlus /> Novo Projeto
-                  </button>
-                </div>
-
-                <div
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #f1f5f9",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div style={{ overflowX: "auto" }}>
-                    <table
-                      style={{ width: "100%", borderCollapse: "collapse" }}
-                    >
-                      <thead>
-                        <tr>
-                          <th style={th}>Número</th>
-                          <th style={th}>Título</th>
-                          <th style={th}>Categoria</th>
-                          <th style={th}>Status</th>
-                          <th style={{ ...th, textAlign: "center" }}>Votos</th>
-                          <th style={{ ...th, textAlign: "center" }}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projetos.map((p, i) => (
-                          <tr key={i} className="row">
-                            <td style={td}>
-                              <span
-                                style={{
-                                  fontFamily: "monospace",
-                                  fontSize: 12,
-                                  color: "#64748b",
-                                }}
-                              >
-                                {p.num}
-                              </span>
-                            </td>
-                            <td style={{ ...td, maxWidth: 240 }}>
-                              <span style={{ fontWeight: 500 }}>
-                                {p.titulo}
-                              </span>
-                            </td>
-                            <td style={td}>
-                              <span style={{ fontSize: 12, color: "#475569" }}>
-                                {p.cat}
-                              </span>
-                            </td>
-                            <td style={td}>
-                              <Badge status={p.status} map={statusProjetoCor} />
-                            </td>
-                            <td style={{ ...td, textAlign: "center" }}>
-                              <span
-                                style={{
-                                  fontWeight: 700,
-                                  fontSize: 14,
-                                  color: p.votos > 0 ? "#1e293b" : "#94a3b8",
-                                }}
-                              >
-                                {p.votos}
-                              </span>
-                            </td>
-                            <td style={{ ...td, textAlign: "center" }}>
-                              <div style={{ display: "inline-flex", gap: 6 }}>
-                                <ActBtn onClick={() => {}} title="Editar">
-                                  <IcoEdit />
-                                </ActBtn>
-                                <ActBtn
-                                  onClick={() => setDenunciaSelecionada(p)}
-                                  title="Visualizar"
-                                >
-                                  <IcoEye />
-                                </ActBtn>
-                                <ActBtn
-                                  onClick={() => {}}
-                                  title="Excluir"
-                                  danger
-                                >
-                                  <IcoTrash />
-                                </ActBtn>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ════ DENÚNCIAS ════ */}
-            {tab === "denuncias" && (
-              <div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 24,
-                  }}
-                >
-                  <div>
-                    <h2
-                      style={{
-                        fontSize: 20,
-                        fontWeight: 700,
-                        color: "#1e293b",
-                        margin: "0 0 4px",
-                      }}
-                    >
-                      Denúncias
-                    </h2>
-                    <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
-                      {pendentes} denúncia{pendentes !== 1 ? "s" : ""} pendente
-                      {pendentes !== 1 ? "s" : ""} aguardando ação
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {[
-                      "Todas",
-                      "Pendente",
-                      "Em análise",
-                      "Aprovada",
-                      "Arquivada",
-                    ].map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => setFiltroDenuncia(f)}
-                        style={{
-                          padding: "6px 14px",
-                          borderRadius: 20,
-                          border: "1px solid #e2e8f0",
-                          background: filtroDenuncia === f ? "#3b82f6" : "#fff",
-
-                          color: filtroDenuncia === f ? "#fff" : "#475569",
-
-                          fontSize: 12,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          transition: "0.2s",
-                        }}
-                      >
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #f1f5f9",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div style={{ overflowX: "auto" }}>
-                    <table
-                      style={{ width: "100%", borderCollapse: "collapse" }}
-                    >
-                      <thead>
-                        <tr>
-                          <th style={th}>ID</th>
-                          <th style={th}>Descrição</th>
-                          <th style={th}>Local</th>
-                          <th style={th}>Status</th>
-                          <th style={th}>Data</th>
-                          <th style={{ ...th, textAlign: "center" }}>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {denunciasFiltradas.map((d, i) => (
-                          <tr key={i} className="row">
-                            <td style={td}>
-                              <span
-                                style={{
-                                  fontFamily: "monospace",
-                                  fontSize: 12,
-                                  color: "#64748b",
-                                }}
-                              >
-                                {d.id}
-                              </span>
-                            </td>
-                            <td style={{ ...td, maxWidth: 260 }}>{d.desc}</td>
-                            <td style={td}>
-                              <span style={{ fontSize: 12, color: "#64748b" }}>
-                                {d.local}
-                              </span>
-                            </td>
-                            <td style={td}>
-                              <Badge
-                                status={d.status}
-                                map={statusDenunciaCor}
-                              />
-                            </td>
-                            <td style={td}>
-                              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                                {d.data}
-                              </span>
-                            </td>
-                            <td style={{ ...td, textAlign: "center" }}>
-                              <div style={{ display: "inline-flex", gap: 6 }}>
-                                {d.status !== "Aprovada" &&
-                                  d.status !== "Arquivada" && (
-                                    <ActBtn
-                                      onClick={() =>
-                                        atualizarStatusDenuncia(
-                                          d.id,
-                                          "Aprovada",
-                                        )
-                                      }
-                                      title="Aprovar"
-                                    >
-                                      <IcoCheck />
-                                    </ActBtn>
-                                  )}
-                                {d.status !== "Arquivada" && (
-                                  <ActBtn
-                                    onClick={() =>
-                                      atualizarStatusDenuncia(d.id, "Arquivada")
-                                    }
-                                    title="Arquivar"
-                                    danger
-                                  >
-                                    <IcoArchive />
-                                  </ActBtn>
-                                )}
-                                <ActBtn onClick={() => {}} title="Visualizar">
-                                  <IcoEye />
-                                </ActBtn>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ════ GASTOS ════ */}
-            {tab === "gastos" && (
-              <div>
-                <h2
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 700,
-                    color: "#1e293b",
-                    margin: "0 0 4px",
-                  }}
-                >
-                  Gastos Públicos
-                </h2>
-                <p
-                  style={{ fontSize: 13, color: "#64748b", margin: "0 0 24px" }}
-                >
-                  Distribuição orçamentária por secretaria — 2025
-                </p>
-
-                {/* Pie + Legenda */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "auto 1fr",
-                    gap: 32,
-                    background: "#fff",
-                    border: "1px solid #f1f5f9",
-                    borderRadius: 12,
-                    padding: "24px 28px",
-                    marginBottom: 24,
-                    alignItems: "center",
-                  }}
-                >
-                  <PieChart />
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#374151",
-                        marginBottom: 12,
-                      }}
-                    >
-                      Legenda
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                      }}
-                    >
-                      {gastosData.map((s, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 12,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: 3,
-                                background: s.cor,
-                                flexShrink: 0,
-                              }}
-                            />
-                            <span style={{ fontSize: 13, color: "#374151" }}>
-                              {s.nome}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#1e293b",
-                              }}
-                            >
-                              R$ {s.valor}M
-                            </span>
-                            <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                              ({((s.valor / totalEdit) * 100).toFixed(1)}%)
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      <div
-                        style={{
-                          borderTop: "1px solid #f1f5f9",
-                          paddingTop: 10,
-                          marginTop: 2,
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "#374151",
-                          }}
-                        >
-                          Total
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: "#1e293b",
-                          }}
-                        >
-                          R$ {totalEdit.toFixed(1)}M
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tabela de edição */}
-                <div
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #f1f5f9",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "16px 20px",
-                      borderBottom: "1px solid #f1f5f9",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#1e293b",
-                      }}
-                    >
-                      Editar Valores por Secretaria
-                    </div>
-                    <div
-                      style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}
-                    >
-                      Clique no valor para editar
-                    </div>
-                  </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th style={th}>Secretaria</th>
-                        <th style={{ ...th, textAlign: "right" }}>
-                          Valor (R$ milhões)
-                        </th>
-                        <th style={{ ...th, textAlign: "right" }}>
-                          % do Total
-                        </th>
-                        <th style={{ ...th, textAlign: "center" }}>Ação</th>
+                        <th className={thClass}>Número</th>
+                        <th className={thClass}>Título</th>
+                        <th className={thClass}>Categoria</th>
+                        <th className={thClass}>Status</th>
+                        <th className={`${thClass} text-center`}>Votos</th>
+                        <th className={`${thClass} text-center`}>Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {gastosData.map((s, i) => (
-                        <tr key={i} className="row">
-                          <td style={td}>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: 10,
-                                  height: 10,
-                                  borderRadius: 2,
-                                  background: s.cor,
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <span style={{ fontWeight: 500 }}>{s.nome}</span>
+                      {projetosFixos.map((p, i) => (
+                        <tr key={i} className="hover:bg-gray-50/50 transition">
+                          <td className={tdClass}><span className="font-mono text-xs text-gray-500">{p.num}</span></td>
+                          <td className={`${tdClass} max-w-[240px]`}><span className="font-medium">{p.titulo}</span></td>
+                          <td className={tdClass}><span className="text-xs text-gray-500">{p.cat}</span></td>
+                          <td className={tdClass}><Badge status={p.status} map={statusProjetoCor} /></td>
+                          <td className={`${tdClass} text-center`}>
+                            <span className={`font-bold text-sm ${p.votos > 0 ? "text-gray-900" : "text-gray-400"}`}>{p.votos}</span>
+                          </td>
+                          <td className={`${tdClass} text-center`}>
+                            <div className="inline-flex gap-1.5">
+                              <ActBtn onClick={() => {}} title="Editar"><Pencil size={14} /></ActBtn>
+                              <ActBtn onClick={() => {}} title="Visualizar"><Eye size={14} /></ActBtn>
+                              <ActBtn onClick={() => {}} title="Excluir" danger><Trash2 size={14} /></ActBtn>
                             </div>
-                          </td>
-                          <td style={{ ...td, textAlign: "right" }}>
-                            {editIdx === i ? (
-                              <input
-                                type="number"
-                                value={editVal}
-                                onChange={(e) => setEditVal(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") saveEdit(i);
-                                  if (e.key === "Escape") setEditIdx(null);
-                                }}
-                                autoFocus
-                                style={{
-                                  width: 100,
-                                  padding: "4px 8px",
-                                  fontSize: 13,
-                                  borderRadius: 6,
-                                  border: "1px solid #3b82f6",
-                                  textAlign: "right",
-                                  color: "#1e293b",
-                                }}
-                              />
-                            ) : (
-                              <span
-                                onClick={() => {
-                                  setEditIdx(i);
-                                  setEditVal(String(s.valor));
-                                }}
-                                style={{
-                                  cursor: "pointer",
-                                  fontWeight: 600,
-                                  color: "#1e293b",
-                                  padding: "2px 6px",
-                                  borderRadius: 4,
-                                  border: "1px solid transparent",
-                                }}
-                                title="Clique para editar"
-                              >
-                                R$ {s.valor}M
-                              </span>
-                            )}
-                          </td>
-                          <td
-                            style={{
-                              ...td,
-                              textAlign: "right",
-                              color: "#64748b",
-                              fontSize: 12,
-                            }}
-                          >
-                            {((s.valor / totalEdit) * 100).toFixed(1)}%
-                          </td>
-                          <td style={{ ...td, textAlign: "center" }}>
-                            {editIdx === i ? (
-                              <div style={{ display: "inline-flex", gap: 6 }}>
-                                <button
-                                  onClick={() => saveEdit(i)}
-                                  style={{
-                                    padding: "4px 12px",
-                                    borderRadius: 6,
-                                    background: "#3b82f6",
-                                    color: "#fff",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  Salvar
-                                </button>
-                                <button
-                                  onClick={() => setEditIdx(null)}
-                                  style={{
-                                    padding: "4px 12px",
-                                    borderRadius: 6,
-                                    background: "#f1f5f9",
-                                    color: "#475569",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            ) : (
-                              <ActBtn
-                                onClick={() => {
-                                  setEditIdx(i);
-                                  setEditVal(String(s.valor));
-                                }}
-                                title="Editar valor"
-                              >
-                                <IcoEdit />
-                              </ActBtn>
-                            )}
                           </td>
                         </tr>
                       ))}
@@ -1567,189 +561,336 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            )}
-            {denunciaSelecionada && (
-              <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(15,23,42,0.55)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 999,
-                  padding: 20,
-                }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    maxWidth: 520,
-                    background: "#fff",
-                    borderRadius: 16,
-                    padding: 24,
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  {/* Header */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
+            </div>
+          )}
+
+          {/* ════ DENÚNCIAS ════ */}
+          {tab === "denuncias" && (
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Denúncias</h2>
+                  <p className="text-sm text-gray-500">
+                    {loadingDenuncias ? "Carregando..." : `${denuncias.length} denúncias — ${pendentes} pendente${pendentes !== 1 ? "s" : ""}`}
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <button
+                    onClick={() => { carregarDenuncias(); carregarEstatisticas(); }}
+                    disabled={loadingDenuncias}
+                    title="Atualizar lista"
+                    className="w-9 h-9 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 transition disabled:opacity-50 shrink-0"
                   >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 20,
-                          fontWeight: 700,
-                          color: "#1e293b",
-                        }}
-                      >
-                        Detalhes da denúncia
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "#94a3b8",
-                          marginTop: 4,
-                        }}
-                      >
-                        {denunciaSelecionada.id}
-                      </div>
-                    </div>
-
+                    <RefreshCw size={16} className={loadingDenuncias ? "animate-spin" : ""} />
+                  </button>
+                  {["Todas", "PENDENTE", "EM_ANALISE", "RESOLVIDO", "ARQUIVADA"].map((f) => (
                     <button
-                      onClick={() => setDenunciaSelecionada(null)}
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 8,
-                        border: "none",
-                        background: "#f1f5f9",
-                        cursor: "pointer",
-                        fontSize: 18,
-                        color: "#475569",
-                      }}
+                      key={f}
+                      onClick={() => setFiltroDenuncia(f)}
+                      className={`px-3.5 py-1.5 rounded-full border text-xs font-medium cursor-pointer transition ${
+                        filtroDenuncia === f
+                          ? "bg-blue-500 text-white border-blue-500"
+                          : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                      }`}
                     >
-                      ×
+                      {f === "Todas" ? "Todas" : statusLabel(f)}
                     </button>
+                  ))}
+                </div>
+              </div>
+
+              {loadingDenuncias ? (
+                <div className="bg-white border border-gray-100 rounded-xl p-8">
+                  <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex gap-4 animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-20" />
+                        <div className="h-4 bg-gray-200 rounded flex-1" />
+                        <div className="h-4 bg-gray-200 rounded w-16" />
+                        <div className="h-4 bg-gray-200 rounded w-24" />
+                      </div>
+                    ))}
                   </div>
+                </div>
+              ) : erroDenuncias ? (
+                <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
+                  <p className="text-sm text-red-600 mb-3">{erroDenuncias}</p>
+                  <button onClick={carregarDenuncias} className="text-sm text-blue-600 font-medium hover:underline">
+                    Tentar novamente
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr>
+                          <th className={thClass}>Protocolo</th>
+                          <th className={thClass}>Título</th>
+                          <th className={thClass}>Categoria</th>
+                          <th className={thClass}>Local</th>
+                          <th className={thClass}>Status</th>
+                          <th className={thClass}>Data</th>
+                          <th className={`${thClass} text-center`}>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {denunciasFiltradas.map((d) => (
+                          <tr key={d.id} className="hover:bg-gray-50/50 transition">
+                            <td className={tdClass}>
+                              <span className="font-mono text-[11px] text-gray-400" title={d.id}>
+                                {d.id.slice(0, 8)}...
+                              </span>
+                            </td>
+                            <td className={`${tdClass} max-w-[200px]`}>
+                              <span className="font-medium truncate block">{d.titulo}</span>
+                            </td>
+                            <td className={tdClass}><span className="text-xs text-gray-500">{d.categoria}</span></td>
+                            <td className={tdClass}><span className="text-xs text-gray-500">{d.bairro}</span></td>
+                            <td className={tdClass}><Badge status={d.status} map={statusDenunciaCor} /></td>
+                            <td className={tdClass}>
+                              <span className="text-xs text-gray-400">{new Date(d.data).toLocaleDateString("pt-BR")}</span>
+                            </td>
+                            <td className={`${tdClass} text-center`}>
+                              <div className="inline-flex gap-1.5">
+                                {d.status !== "RESOLVIDO" && d.status !== "ARQUIVADA" && (
+                                  <>
+                                    <ActBtn
+                                      onClick={() => atualizarStatus(d.id, "RESOLVIDO")}
+                                      title="Marcar como resolvida"
+                                      loading={atualizando === d.id}
+                                    >
+                                      <Check size={14} />
+                                    </ActBtn>
+                                    <ActBtn
+                                      onClick={() => atualizarStatus(d.id, "EM_ANALISE")}
+                                      title="Em análise"
+                                      loading={atualizando === d.id}
+                                    >
+                                      <Eye size={14} />
+                                    </ActBtn>
+                                  </>
+                                )}
+                                {d.status !== "ARQUIVADA" && (
+                                  <ActBtn
+                                    onClick={() => atualizarStatus(d.id, "ARQUIVADA")}
+                                    title="Arquivar"
+                                    loading={atualizando === d.id}
+                                  >
+                                    <Archive size={14} />
+                                  </ActBtn>
+                                )}
+                                <ActBtn onClick={() => setDenunciaSelecionada(d)} title="Detalhes">
+                                  <Eye size={14} />
+                                </ActBtn>
+                                <ActBtn
+                                  onClick={() => setConfirmDelete(d.id)}
+                                  title="Excluir"
+                                  danger
+                                  loading={excluindo === d.id}
+                                >
+                                  <Trash2 size={14} />
+                                </ActBtn>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {denunciasFiltradas.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                              Nenhuma denúncia encontrada com esse filtro.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-                  {/* Conteúdo */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 16,
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#94a3b8",
-                          marginBottom: 4,
-                          textTransform: "uppercase",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Descrição
-                      </div>
+          {/* ════ GASTOS ════ */}
+          {tab === "gastos" && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Gastos Públicos</h2>
+              <p className="text-sm text-gray-500 mb-6">Distribuição orçamentária por secretaria — 2026</p>
 
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: "#334155",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {denunciaSelecionada.desc}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 16,
-                      }}
-                    >
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#94a3b8",
-                            marginBottom: 4,
-                            textTransform: "uppercase",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Local
+              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-8 bg-white border border-gray-100 rounded-xl p-6 mb-6 items-center">
+                <PieChartSVG data={gastosData} />
+                <div>
+                  <div className="text-sm font-semibold text-gray-700 mb-3">Legenda</div>
+                  <div className="flex flex-col gap-2.5">
+                    {gastosData.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: secretariasHex[s.nome] || "#94a3b8" }} />
+                          <span className="text-sm text-gray-700">{s.nome}</span>
                         </div>
-
-                        <div
-                          style={{
-                            fontSize: 14,
-                            color: "#334155",
-                          }}
-                        >
-                          {denunciaSelecionada.local}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">R$ {s.valor}M</span>
+                          <span className="text-[11px] text-gray-400">({((s.valor / totalEdit) * 100).toFixed(1)}%)</span>
                         </div>
                       </div>
-
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#94a3b8",
-                            marginBottom: 4,
-                            textTransform: "uppercase",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Data
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 14,
-                            color: "#334155",
-                          }}
-                        >
-                          {denunciaSelecionada.data}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#94a3b8",
-                          marginBottom: 4,
-                          textTransform: "uppercase",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Status
-                      </div>
-
-                      <Badge
-                        status={denunciaSelecionada.status}
-                        map={statusDenunciaCor}
-                      />
+                    ))}
+                    <div className="border-t border-gray-100 pt-2.5 mt-0.5 flex justify-between">
+                      <span className="text-sm font-semibold text-gray-700">Total</span>
+                      <span className="text-sm font-bold text-gray-900">R$ {totalEdit.toFixed(1)}M</span>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-          </main>
-        </div>
+
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <div className="text-sm font-semibold text-gray-900">Editar Valores por Secretaria</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Clique no valor para editar</div>
+                </div>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className={thClass}>Secretaria</th>
+                      <th className={`${thClass} text-right`}>Valor (R$ milhões)</th>
+                      <th className={`${thClass} text-right`}>% do Total</th>
+                      <th className={`${thClass} text-center`}>Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gastosData.map((s, i) => (
+                      <tr key={i} className="hover:bg-gray-50/50 transition">
+                        <td className={tdClass}>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: secretariasHex[s.nome] || "#94a3b8" }} />
+                            <span className="font-medium">{s.nome}</span>
+                          </div>
+                        </td>
+                        <td className={`${tdClass} text-right`}>
+                          {editIdx === i ? (
+                            <input
+                              type="number"
+                              value={editVal}
+                              onChange={(e) => setEditVal(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(i);
+                                if (e.key === "Escape") setEditIdx(null);
+                              }}
+                              autoFocus
+                              className="w-[100px] px-2 py-1 text-sm rounded-md border border-blue-500 text-right text-gray-900 outline-none focus:ring-2 focus:ring-blue-500/30"
+                            />
+                          ) : (
+                            <span
+                              onClick={() => { setEditIdx(i); setEditVal(String(s.valor)); }}
+                              className="cursor-pointer font-semibold text-gray-900 px-1.5 py-0.5 rounded border border-transparent hover:border-gray-200 transition"
+                              title="Clique para editar"
+                            >
+                              R$ {s.valor}M
+                            </span>
+                          )}
+                        </td>
+                        <td className={`${tdClass} text-right text-gray-500 text-xs`}>
+                          {((s.valor / totalEdit) * 100).toFixed(1)}%
+                        </td>
+                        <td className={`${tdClass} text-center`}>
+                          {editIdx === i ? (
+                            <div className="inline-flex gap-1.5">
+                              <button onClick={() => saveEdit(i)} className="px-3 py-1 rounded-md bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition">
+                                Salvar
+                              </button>
+                              <button onClick={() => setEditIdx(null)} className="px-3 py-1 rounded-md bg-gray-100 text-gray-500 text-xs hover:bg-gray-200 transition">
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <ActBtn onClick={() => { setEditIdx(i); setEditVal(String(s.valor)); }} title="Editar valor">
+                              <Pencil size={14} />
+                            </ActBtn>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Modal de detalhes ── */}
+          {denunciaSelecionada && (
+            <div className="fixed inset-0 bg-gray-900/55 flex items-center justify-center z-[999] p-5" role="dialog" aria-modal="true" aria-label="Detalhes da denúncia">
+              <div className="w-full max-w-[520px] bg-white rounded-2xl p-6 shadow-2xl">
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <div className="text-xl font-bold text-gray-900">Detalhes da Denúncia</div>
+                    <div className="text-xs text-gray-400 mt-1 font-mono">{denunciaSelecionada.id}</div>
+                  </div>
+                  <button
+                    onClick={() => setDenunciaSelecionada(null)}
+                    className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Título</div>
+                    <div className="text-sm text-gray-900 font-medium">{denunciaSelecionada.titulo}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Descrição</div>
+                    <div className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-lg p-3">{denunciaSelecionada.descricao}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Categoria</div>
+                      <div className="text-sm text-gray-800">{denunciaSelecionada.categoria}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Status</div>
+                      <Badge status={denunciaSelecionada.status} map={statusDenunciaCor} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Local</div>
+                      <div className="text-sm text-gray-800">{denunciaSelecionada.bairro} — {denunciaSelecionada.cidade}/{denunciaSelecionada.estado}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Endereço</div>
+                      <div className="text-sm text-gray-800">{denunciaSelecionada.rua}, {denunciaSelecionada.numero}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Data</div>
+                    <div className="text-sm text-gray-800">{new Date(denunciaSelecionada.data).toLocaleString("pt-BR")}</div>
+                  </div>
+                </div>
+
+                {denunciaSelecionada.status !== "RESOLVIDO" && denunciaSelecionada.status !== "ARQUIVADA" && (
+                  <div className="flex gap-2 mt-5 pt-5 border-t border-gray-100">
+                    <button
+                      onClick={() => { atualizarStatus(denunciaSelecionada.id, "RESOLVIDO"); setDenunciaSelecionada(null); }}
+                      className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition"
+                    >
+                      Marcar como resolvida
+                    </button>
+                    <button
+                      onClick={() => { atualizarStatus(denunciaSelecionada.id, "EM_ANALISE"); setDenunciaSelecionada(null); }}
+                      className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition"
+                    >
+                      Em análise
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
       </div>
-    </>
+    </div>
   );
 }

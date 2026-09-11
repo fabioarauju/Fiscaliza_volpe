@@ -5,8 +5,8 @@ const BASE_URL = "https://dadosabertos.camara.leg.br/api/v2";
  * para garantir que projetos em andamento não fiquem de fora.
  */
 export async function buscarProposicoes({
-  itens = 100, // Aumentado para carregar uma base maior
-} = {}) {
+  itens = 100,
+}: { itens?: number; ano?: number } = {}) {
   try {
     // Dispara as duas buscas em paralelo
     const [res2025, res2026] = await Promise.all([
@@ -34,7 +34,7 @@ export async function buscarProposicoes({
   }
 }
 
-export async function buscarDetalhesProposicao(id) {
+export async function buscarDetalhesProposicao(id: number) {
   try {
     const [detRes, autRes, temRes, tramRes] = await Promise.all([
       fetch(`${BASE_URL}/proposicoes/${id}`),

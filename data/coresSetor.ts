@@ -1,4 +1,4 @@
-export const CORES_SETOR = {
+export const CORES_SETOR: Record<string, string> = {
   "Saúde": "#378ADD",
   "Educação": "#D85A30",
   "Urbanismo (Obras)": "#639922",
@@ -8,6 +8,6 @@ export const CORES_SETOR = {
   "Outros": "#1D9E75",
 };
 
-export function corSetor(setor) {
+export function corSetor(setor: string): string {
   return CORES_SETOR[setor] || "#B4B2A9";
 }

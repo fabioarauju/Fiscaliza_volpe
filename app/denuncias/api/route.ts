@@ -1,9 +1,23 @@
 import { NextResponse } from "next/server";
 
-// URL apontando exatamente para a rota do Controller no Java
 const JAVA_API_URL =
   process.env.API_JAVA_URL ||
   "https://fizcalizavolpe-back-end.onrender.com/denuncias";
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60_000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT;
+}
 
 export async function GET() {
   try {
@@ -21,7 +35,15 @@ export async function GET() {
   }
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "Muitas denúncias enviadas. Aguarde um minuto e tente novamente." },
+      { status: 429 },
+    );
+  }
+
   try {
     const body = await request.json();
 
@@ -31,13 +53,12 @@ export async function POST(request) {
       body: JSON.stringify(body),
     });
 
-    // Lê como texto primeiro para não quebrar se o Java retornar uma String simples
     const textResponse = await response.text();
     let data;
     try {
       data = textResponse ? JSON.parse(textResponse) : {};
-    } catch (e) {
-      data = { message: textResponse }; // Se não for JSON, envia como mensagem
+    } catch {
+      data = { message: textResponse };
     }
 
     if (!response.ok) {

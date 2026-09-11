@@ -1,4 +1,4 @@
-export async function buscarEnderecoPorCep(cep) {
+export async function buscarEnderecoPorCep(cep: string) {
   const cepLimpo = cep.replace(/\D/g, "");
   if (cepLimpo.length !== 8) return null;
 
