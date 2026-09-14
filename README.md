@@ -2,204 +2,674 @@
 
 Projeto desenvolvido para o **Enterprise Challenge 2SIO 2026 — HackGov (FIAP + EGESP)**.
 
-O Fiscaliza Volpe é uma **plataforma digital de transparência e gestão pública**, que centraliza e organiza dados governamentais de forma clara e acessível, incentivando a participação ativa do cidadão na fiscalização da gestão pública. O sistema permite:
+O **Fiscaliza Volpe** é uma **plataforma digital de transparência e participação cidadã**, desenvolvida para centralizar e organizar informações públicas de forma clara, acessível e visual.
 
-- Visualizar **dashboards** com gastos públicos por setor (Saúde, Educação, Urbanismo, Administração, Previdência Social, Assistência Social e Outros);
-- Acompanhar **projetos de lei** em tramitação, consultados em tempo real na API de Dados Abertos da Câmara dos Deputados;
-- Registrar e acompanhar **denúncias** de problemas urbanos (Saneamento, Ambiental, Infraestrutura ou Perturbação) em um mapa interativo, com preenchimento automático de endereço via CEP;
-- Gerenciar tudo isso através de um **painel administrativo** restrito, para triagem de denúncias e edição de gastos por secretaria.
+A plataforma permite que o cidadão acompanhe dados da gestão pública, consulte projetos de lei e registre denúncias sobre problemas urbanos. Ao mesmo tempo, oferece aos gestores um painel administrativo para acompanhar, filtrar, analisar e gerenciar as denúncias recebidas.
+
+O sistema possui:
+
+* 📊 **Dashboard público** com informações e gráficos sobre gastos públicos;
+* 🏛️ Consulta de **projetos de lei** através da API de Dados Abertos da Câmara dos Deputados;
+* 📍 Registro e acompanhamento de **denúncias** com geolocalização;
+* 🗺️ **Mapa interativo** das denúncias;
+* 🔎 Sistema completo de **busca e filtros**;
+* 🔐 **Painel administrativo** protegido por autenticação;
+* 📈 Dashboard administrativo com **métricas reais**;
+* 🗃️ Persistência dos dados utilizando **PostgreSQL**;
+* 🚦 **Rate limiting** para proteção do endpoint de criação de denúncias;
+* 🌎 **Geocodificação automática** utilizando Nominatim/OpenStreetMap;
+* 📱 Interface **responsiva para dispositivos móveis**.
 
 ---
 
 ## 🚀 Tecnologias utilizadas
 
-| Camada | Tecnologia | Uso no projeto |
-|---|---|---|
-| Framework | [Next.js 16](https://nextjs.org/) (App Router) | Renderização das páginas, roteamento e API Routes |
-| Biblioteca de UI | React 19 | Componentização da interface |
-| Linguagem | TypeScript / JavaScript (JSX) | Tipagem nas rotas de API e autenticação; JSX nas páginas de conteúdo |
-| Estilização | Tailwind CSS 4 | Layout responsivo e componentes visuais |
-| Gráficos | Recharts | Gráficos de barra e pizza (despesas e categorias de denúncias) |
-| Mapas | Leaflet + React-Leaflet | Mapa interativo com as denúncias georreferenciadas |
-| Backend | API Routes (Route Handlers) do Next.js | Endpoints de denúncias (GET/POST) e autenticação do painel admin |
-| Banco de dados | PostgreSQL (via biblioteca `pg`) | Armazenamento das denúncias registradas pelos cidadãos |
-| Integração externa | API ViaCEP | Preenchimento automático de endereço a partir do CEP informado |
-| Integração externa | API de Dados Abertos da Câmara dos Deputados | Consulta de proposições legislativas em tempo real |
-| Autenticação | Cookie de sessão HTTP-only + middleware | Proteção da rota do painel administrativo |
-| Hospedagem | [Vercel](https://vercel.com/) | Deploy contínuo integrado ao repositório GitHub |
+| Camada           | Tecnologia                                | Uso no projeto                                                  |
+| ---------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| Frontend         | **Next.js 16**                            | Renderização das páginas, roteamento e integração com o backend |
+| Biblioteca de UI | **React 19**                              | Componentização da interface                                    |
+| Linguagem        | **TypeScript / JavaScript (JSX)**         | Desenvolvimento do frontend e integrações                       |
+| Estilização      | **Tailwind CSS 4**                        | Layout responsivo e componentes visuais                         |
+| Gráficos         | **Recharts**                              | Gráficos de gastos, categorias e evolução das denúncias         |
+| Mapas            | **Leaflet + React-Leaflet**               | Mapa interativo e visualização geográfica                       |
+| Backend          | **Java + Spring Boot**                    | API REST e regras de negócio                                    |
+| Banco de dados   | **PostgreSQL**                            | Persistência das denúncias e informações do sistema             |
+| ORM/Persistência | **Spring Data JPA / Hibernate**           | Comunicação entre aplicação Java e banco de dados               |
+| API externa      | **ViaCEP**                                | Preenchimento automático de endereço pelo CEP                   |
+| API externa      | **Nominatim / OpenStreetMap**             | Geocodificação automática de endereços                          |
+| API externa      | **Dados Abertos da Câmara dos Deputados** | Consulta de projetos e proposições legislativas                 |
+| Autenticação     | **Cookie de sessão HTTP-only**            | Proteção do acesso administrativo                               |
+| Rate Limiting    | **Controle por endereço IP**              | Limite de criação de denúncias                                  |
+| Hospedagem       | **Vercel**                                | Deploy do frontend                                              |
 
 ---
 
-## 📋 Pré-requisitos
+# 📋 Funcionalidades
 
-Antes de começar, você precisa ter instalado em sua máquina:
+## 📊 Dashboard Público
 
-- [Node.js](https://nodejs.org/) (versão 18 ou superior recomendada)
-- [npm](https://www.npmjs.com/) (instalado junto com o Node.js) ou [yarn](https://yarnpkg.com/)
-- [Git](https://git-scm.com/)
-- Uma instância de banco de dados **PostgreSQL** (local ou em nuvem, ex: [Neon](https://neon.tech/), [Supabase](https://supabase.com/) ou [Vercel Postgres](https://vercel.com/storage/postgres))
+O Dashboard apresenta uma visão geral das informações públicas disponibilizadas pelo Fiscaliza Volpe.
+
+Entre os recursos disponíveis estão:
+
+* Indicadores de gastos públicos;
+* Gráficos de despesas por setor;
+* Visualização de dados de Saúde;
+* Educação;
+* Urbanismo;
+* Administração;
+* Previdência Social;
+* Assistência Social;
+* Outros;
+* Informações resumidas sobre projetos de lei;
+* Layout responsivo para diferentes dispositivos.
 
 ---
 
-## ⚙️ Como executar o projeto localmente
+## 🏛️ Projetos de Lei
 
-### 1. Clone o repositório
+O módulo de Projetos de Lei permite consultar proposições legislativas utilizando a **API de Dados Abertos da Câmara dos Deputados**.
+
+O usuário pode:
+
+* Visualizar projetos de lei;
+* Consultar informações atualizadas através da API;
+* Filtrar projetos;
+* Utilizar paginação;
+* Visualizar indicadores estatísticos;
+* Consultar as informações de maneira organizada.
+
+No mobile, a tabela possui **scroll horizontal** para preservar a usabilidade e a leitura das informações.
+
+---
+
+# 🚨 Denúncias
+
+O módulo de denúncias é um dos principais recursos de participação cidadã do Fiscaliza Volpe.
+
+O cidadão pode registrar ocorrências relacionadas a problemas urbanos, incluindo:
+
+* Saneamento;
+* Ambiental;
+* Infraestrutura;
+* Perturbação;
+* Outros.
+
+As denúncias possuem informações como endereço, categoria, descrição, status, localização geográfica e protocolo único.
+
+### Recursos disponíveis
+
+* Cadastro de denúncias;
+* Geração de protocolo UUID;
+* Consulta de denúncias;
+* Busca por protocolo;
+* Busca textual;
+* Filtro por status;
+* Filtro por categoria;
+* Filtro por cidade;
+* Filtros avançados;
+* Paginação;
+* Visualização detalhada;
+* Mapa interativo;
+* Gráficos estatísticos;
+* Geolocalização automática;
+* Persistência em PostgreSQL.
+
+A tabela pública foi simplificada para quatro colunas:
+
+| Denúncia | Categoria | Status | Ver |
+| -------- | --------- | ------ | --- |
+
+Além disso, **toda a linha da tabela é clicável**, permitindo acessar rapidamente os detalhes da denúncia.
+
+A paginação foi ampliada de **5 para 10 denúncias por página**.
+
+---
+
+# 🔎 Busca e filtros
+
+A página pública de denúncias possui um sistema completo de busca e filtragem.
+
+Os filtros disponíveis incluem:
+
+* 🔍 Texto;
+* 📌 Status;
+* 🏷️ Categoria;
+* 🏙️ Cidade;
+* 🆔 Protocolo UUID.
+
+Os filtros avançados utilizam **dropdowns colapsáveis**, mantendo a interface organizada.
+
+O **mapa e os gráficos reagem aos filtros aplicados**, permitindo que o usuário visualize somente os dados relacionados à pesquisa atual.
+
+---
+
+# ⚙️ Backend — Java + Spring Boot
+
+O backend foi desenvolvido utilizando **Java e Spring Boot**, disponibilizando uma API REST responsável pelo gerenciamento das denúncias.
+
+## Endpoints principais
+
+### Buscar denúncias
+
+```http
+GET /denuncias
+```
+
+Também é possível filtrar pelo status:
+
+```http
+GET /denuncias?status=X
+```
+
+---
+
+### Paginação
+
+```http
+GET /denuncias/paginado
+```
+
+Permite consultar as denúncias utilizando paginação.
+
+---
+
+### Estatísticas
+
+```http
+GET /denuncias/estatisticas
+```
+
+Retorna informações estatísticas, incluindo:
+
+* Total de denúncias;
+* Pendentes;
+* Em análise;
+* Resolvidas;
+* Arquivadas;
+* Distribuição por categoria;
+* Distribuição por mês.
+
+---
+
+### Atualização de status
+
+```http
+PATCH /denuncias/{id}/status
+```
+
+Permite atualizar o status de uma denúncia.
+
+Os principais estados utilizados são:
+
+* Pendente;
+* Em análise;
+* Resolvido;
+* Arquivada.
+
+---
+
+### Exclusão de denúncia
+
+```http
+DELETE /denuncias/{id}
+```
+
+Permite excluir uma denúncia através de seu identificador.
+
+---
+
+## 🌎 Geocodificação automática
+
+Ao criar uma denúncia, o backend realiza automaticamente a **geocodificação do endereço** utilizando o serviço **Nominatim**, baseado nos dados do OpenStreetMap.
+
+O processo permite obter automaticamente:
+
+```text
+Endereço
+   ↓
+Nominatim / OpenStreetMap
+   ↓
+Latitude + Longitude
+   ↓
+Denúncia
+   ↓
+Mapa
+```
+
+Dessa forma, o cidadão não precisa informar manualmente as coordenadas geográficas.
+
+---
+
+# 🔐 Rate Limiting
+
+Para evitar abuso do endpoint de criação de denúncias, foi implementado um mecanismo de **Rate Limiting baseado no endereço IP**.
+
+O limite atual é:
+
+```text
+5 denúncias por minuto por IP
+```
+
+Caso o limite seja ultrapassado, novas requisições de criação são bloqueadas temporariamente.
+
+Essa medida contribui para:
+
+* Redução de spam;
+* Proteção da API;
+* Controle de requisições;
+* Maior estabilidade do sistema.
+
+---
+
+# 🔑 Painel Administrativo
+
+O Fiscaliza Volpe possui um painel administrativo destinado ao gerenciamento das denúncias.
+
+Acesse:
+
+```text
+/admin
+```
+
+O painel apresenta métricas reais provenientes do backend.
+
+## 📊 Dashboard administrativo
+
+São exibidos indicadores de:
+
+* Total de denúncias;
+* Pendentes;
+* Em análise;
+* Resolvidas;
+* Arquivadas.
+
+Também estão disponíveis gráficos de:
+
+* Denúncias por categoria;
+* Denúncias por mês.
+
+---
+
+## 🛠️ Gerenciamento de denúncias
+
+O administrador pode:
+
+* Visualizar denúncias;
+* Filtrar por status;
+* Abrir detalhes da denúncia;
+* Alterar o status;
+* Excluir denúncias;
+* Confirmar ações através de modais;
+* Receber notificações de sucesso, erro e informação.
+
+### Atualização de status
+
+O painel disponibiliza ações rápidas para alterar uma denúncia para:
+
+* **Resolvido**
+* **Em análise**
+* **Arquivada**
+
+Após a operação, o sistema apresenta um **toast de confirmação**.
+
+### Exclusão
+
+A exclusão de uma denúncia exige confirmação através de um **modal**, reduzindo o risco de exclusões acidentais.
+
+### Notificações
+
+O sistema utiliza notificações toast para informar:
+
+* ✅ Sucesso;
+* ❌ Erro;
+* ℹ️ Informações.
+
+---
+
+# 🔐 Login Administrativo
+
+A área administrativa possui uma tela de login.
+
+Foi implementada a opção:
+
+> **Lembrar minhas credenciais**
+
+Quando ativada, as informações necessárias são armazenadas no **localStorage** do navegador para facilitar acessos posteriores.
+
+> ⚠️ O armazenamento de credenciais no navegador deve ser utilizado com atenção em ambientes de produção. Uma evolução futura pode substituir essa abordagem por mecanismos mais robustos de gerenciamento de sessão e autenticação.
+
+---
+
+# 🗄️ Banco de Dados
+
+O projeto utiliza **PostgreSQL** para persistência das denúncias.
+
+Atualmente, o banco possui aproximadamente:
+
+```text
+1.000 denúncias
+```
+
+Os dados foram cadastrados em massa para possibilitar testes, demonstrações e geração dos gráficos da plataforma.
+
+As denúncias estão distribuídas por:
+
+```text
+15 cidades brasileiras
+```
+
+### Distribuição aproximada por status
+
+| Status     | Percentual |
+| ---------- | ---------: |
+| Pendente   |       ~40% |
+| Em Análise |       ~25% |
+| Resolvido  |       ~25% |
+| Arquivada  |       ~10% |
+
+### Categorias
+
+Os registros utilizam diferentes categorias:
+
+* Saneamento;
+* Ambiental;
+* Infraestrutura;
+* Perturbação;
+* Outros.
+
+Essa massa de dados permite testar:
+
+* Paginação;
+* Filtros;
+* Busca;
+* Gráficos;
+* Estatísticas;
+* Mapa;
+* Dashboard administrativo.
+
+---
+
+# 📱 Responsividade
+
+A plataforma foi adaptada para diferentes tamanhos de tela.
+
+## Painel Administrativo
+
+No mobile:
+
+* A sidebar transforma-se em um **drawer deslizante**;
+* Os grids são adaptáveis;
+* Cards e métricas se reorganizam;
+* As funcionalidades permanecem acessíveis em telas menores.
+
+## Página Sobre
+
+O grid de estatísticas foi adaptado para diferentes resoluções, evitando quebra de layout.
+
+## Home
+
+Os labels dos gráficos foram ajustados para melhorar a visualização em telas pequenas.
+
+## Projetos de Lei
+
+As tabelas possuem **scroll horizontal** em dispositivos móveis para preservar a estrutura das informações.
+
+---
+
+# 📋 Pré-requisitos
+
+Antes de executar o projeto localmente, é necessário possuir:
+
+* **Node.js 18+**;
+* **npm** ou **yarn**;
+* **Git**;
+* **Java 17+**;
+* **Maven**;
+* Uma instância do **PostgreSQL**.
+
+---
+
+# ⚙️ Como executar o projeto
+
+## 1. Clone o repositório
 
 ```bash
-git clone https://github.com/<seu-usuario>/Fiscaliza_volpe.git
+git clone https://github.com/fabioarauju/Fiscaliza_volpe.git
+
 cd Fiscaliza_volpe
 ```
 
-### 2. Instale as dependências
+---
+
+## 2. Instale as dependências do frontend
 
 ```bash
 npm install
 ```
 
-ou, se preferir usar yarn:
+Ou:
 
 ```bash
 yarn install
 ```
 
-### 3. Configure as variáveis de ambiente
+---
 
-Crie um arquivo `.env.local` na raiz do projeto com a string de conexão do seu banco PostgreSQL:
+## 3. Configure o banco de dados
 
-```env
+Crie uma instância PostgreSQL e configure as informações necessárias no backend.
+
+Exemplo:
+
+```text
 DATABASE_URL=postgresql://usuario:senha@host:5432/nome_do_banco
 ```
 
-> ✍️ Se o painel administrativo usar credenciais fixas de acesso (usuário/senha) ou algum segredo para o cookie de sessão, adicione aqui as variáveis correspondentes (ex: `ADMIN_USER`, `ADMIN_PASSWORD`, `SESSION_SECRET`).
+As variáveis exatas devem seguir a configuração utilizada pelo backend Spring Boot.
 
-### 4. Crie a tabela de denúncias no banco de dados
+---
 
-Execute no seu banco PostgreSQL a criação da tabela `denuncias` (ajuste os campos conforme o schema real usado no projeto):
+## 4. Execute o backend
 
-```sql
-CREATE TABLE denuncias (
-  id SERIAL PRIMARY KEY,
-  titulo VARCHAR(255) NOT NULL,
-  categoria VARCHAR(50) NOT NULL, -- Saneamento, Ambiental, Infraestrutura ou Perturbação
-  cep VARCHAR(9),
-  rua VARCHAR(255),
-  bairro VARCHAR(255),
-  cidade VARCHAR(255),
-  estado VARCHAR(2),
-  numero_referencia VARCHAR(50),
-  descricao TEXT,
-  status VARCHAR(50) DEFAULT 'pendente',
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  criado_em TIMESTAMP DEFAULT NOW()
-);
+Na pasta do backend:
+
+```bash
+mvn spring-boot:run
 ```
 
-> ✍️ Substitua pelo script real utilizado no projeto, se houver um arquivo `.sql` de migração no repositório.
+Ou, caso o projeto possua Maven Wrapper:
 
-### 5. Execute o servidor de desenvolvimento
+```bash
+./mvnw spring-boot:run
+```
+
+No Windows:
+
+```bash
+mvnw.cmd spring-boot:run
+```
+
+---
+
+## 5. Execute o frontend
+
+Na pasta do frontend:
 
 ```bash
 npm run dev
 ```
 
-ou
-
-```bash
-yarn dev
-```
-
 O projeto estará disponível em:
 
-```
+```text
 http://localhost:3000
 ```
 
-### 6. Build para produção (opcional)
-
-```bash
-npm run build
-npm run start
-```
-
 ---
 
-## 🔐 Acesso ao Painel Administrativo
+# 📁 Estrutura do projeto
 
-O painel administrativo é uma área restrita, protegida por autenticação via cookie de sessão HTTP-only e middleware. Nesta versão, a autenticação utiliza credenciais fixas (a serem substituídas futuramente por um sistema de usuários com senha protegida por hash).
+A estrutura pode variar conforme a organização atual dos repositórios frontend e backend.
 
-Acesse em `http://localhost:3000/admin` (ou o caminho equivalente da rota admin) com:
+### Frontend
 
-- **Usuário:** `✍️ preencher`
-- **Senha:** `✍️ preencher`
-
----
-
-## 📁 Estrutura do repositório
-
-O código-fonte segue a convenção do Next.js App Router:
-
-```
+```text
 Fiscaliza_volpe/
-├── app/            # Páginas e rotas (dashboard, denúncias, gestão pública,
-│                   # projetos de lei, painel admin, sobre) e API Routes
-│                   # (denúncias e autenticação)
-├── components/     # Componentes reutilizáveis: gráficos, mapa, tabela,
-│                   # cabeçalho e rodapé
-├── data/           # Dados de exemplo utilizados durante o desenvolvimento
-├── public/         # Arquivos estáticos e middleware de proteção da rota admin
-├── .gitignore
-├── eslint.config.mjs
-├── next.config.ts
+├── app/
+│   ├── admin/
+│   ├── denuncias/
+│   ├── projetos/
+│   ├── dashboard/
+│   └── ...
+├── components/
+├── data/
+├── public/
 ├── package.json
-├── postcss.config.mjs
+├── next.config.ts
 ├── tsconfig.json
 └── README.md
 ```
 
----
+### Backend
 
-## 👥 Equipe
+```text
+backend/
+└── src/
+    └── main/
+        ├── java/
+        │   └── ...
+        └── resources/
+            └── ...
+```
 
-| RM | Nome | Função no projeto | Cidade |
-|---|---|---|---|
-| RM565181 | Fabio | Software Engineer | ✍️ |
-| RM563495 | Giullia | Frontend Developer | ✍️ |
-| RM563165 | Isabella | Frontend Developer | ✍️ |
-| RM565308 | Zilton | Game Developer | ✍️ |
-| RM566202 | Maria Eduarda | Frontend Developer | ✍️ |
-
----
-
-## 🔗 Links do projeto
-
-- **Site publicado:** https://fiscaliza-volpe.vercel.app/
-- **Repositórios:**
-  - https://github.com/fabioarauju/Fiscaliza_volpe
-  - https://github.com/volpebits/FizcalizaVolpe-React
-- **Protótipo (Figma):** https://www.figma.com/design/D49XfVXLoUWgO6SJPaf1lB/Fiscaliza-Volpe?node-id=0-1&p=f
-- **Slides:** https://canva.link/jjsqvarjab8ie71
-- **Vídeo demonstrativo:** ✍️ adicionar link
+A camada Java/Spring Boot é responsável pela API REST, regras de negócio, integração com o PostgreSQL e processamento das denúncias.
 
 ---
 
-## 📌 Status atual e próximos passos
+# 👥 Equipe
 
-**Já funcional:**
-- Dashboard público com gráficos de gastos por setor;
-- Registro e visualização de denúncias, com persistência em banco PostgreSQL;
-- Mapa interativo das denúncias;
-- Consulta de projetos de lei via API pública da Câmara dos Deputados;
-- Painel administrativo navegável.
-
-**Próximos passos:**
-- Substituir a autenticação fixa do painel admin por um sistema de usuários com senha protegida por hash;
-- Persistir no banco as edições feitas no painel admin (status das denúncias e valores por secretaria), hoje mantidas apenas em memória durante a sessão;
-- Implementar o módulo de Inteligência Artificial (classificação de imagens por visão computacional e chatbot de triagem via NLP);
-- Desenvolver os módulos de análise preditiva e dashboards de ciência de dados.
+| RM       | Nome          | Função no projeto  |
+| -------- | ------------- | ------------------ |
+| RM565181 | Fabio         | Software Engineer  |
+| RM563495 | Giullia       | Frontend Developer |
+| RM563165 | Isabella      | Frontend Developer |
+| RM565308 | Zilton        | Game Developer     |
+| RM566202 | Maria Eduarda | Frontend Developer |
 
 ---
 
-## 📄 Licença
+# 🔗 Links do projeto
 
-Projeto acadêmico desenvolvido para o Enterprise Challenge 2SIO 2026 (FIAP), em parceria com a EGESP — Escola de Governo do Estado de São Paulo, sob a temática HackGov.
+* **Site publicado:** https://fiscaliza-volpe.vercel.app/
+* **Repositório principal:** https://github.com/fabioarauju/Fiscaliza_volpe
+* **Repositório:** https://github.com/volpebits/FizcalizaVolpe-React
+* **Protótipo Figma:** https://www.figma.com/design/D49XfVXLoUWgO6SJPaf1lB/Fiscaliza-Volpe?node-id=0-1&p=f
+* **Slides:** https://canva.link/jjsqvarjab8ie71
+* **Vídeo demonstrativo:** ✍️ adicionar link
+
+---
+
+# 📌 Status atual
+
+## ✅ Funcionalidades implementadas
+
+### Frontend
+
+* [x] Dashboard público;
+* [x] Gráficos de gastos;
+* [x] Projetos de Lei;
+* [x] Integração com API da Câmara dos Deputados;
+* [x] Cadastro de denúncias;
+* [x] Busca de denúncias;
+* [x] Filtros por status;
+* [x] Filtros por categoria;
+* [x] Filtros por cidade;
+* [x] Busca por protocolo UUID;
+* [x] Filtros avançados;
+* [x] Paginação de 10 itens;
+* [x] Mapa interativo;
+* [x] Gráficos de denúncias;
+* [x] Modal de detalhes;
+* [x] Painel administrativo;
+* [x] Dashboard administrativo;
+* [x] Alteração de status;
+* [x] Exclusão de denúncias;
+* [x] Modal de confirmação;
+* [x] Toasts de sucesso, erro e informação;
+* [x] Login administrativo;
+* [x] Opção de lembrar credenciais;
+* [x] Responsividade mobile.
+
+### Backend
+
+* [x] API REST com Spring Boot;
+* [x] PostgreSQL;
+* [x] Consulta de denúncias;
+* [x] Filtro por status;
+* [x] Paginação;
+* [x] Endpoint de estatísticas;
+* [x] Atualização de status;
+* [x] Exclusão de denúncias;
+* [x] Geocodificação automática;
+* [x] Integração com Nominatim/OpenStreetMap;
+* [x] Rate limiting de 5 denúncias por minuto por IP.
+
+### Banco de dados
+
+* [x] Aproximadamente 1.000 denúncias;
+* [x] Dados distribuídos em 15 cidades;
+* [x] Diferentes categorias;
+* [x] Diferentes status;
+* [x] Dados preparados para geração de estatísticas e gráficos.
+
+---
+
+# 🔮 Próximos passos
+
+Entre as possíveis evoluções do projeto estão:
+
+* Implementar autenticação completa de cidadãos;
+* Criar a Página do Usuário;
+* Permitir que o cidadão acompanhe suas próprias denúncias;
+* Implementar histórico de alterações de status;
+* Adicionar notificações para cidadãos;
+* Implementar upload de imagens e documentos nas denúncias;
+* Evoluir o controle de acesso baseado em perfis;
+* Aprimorar mecanismos de segurança;
+* Implementar recursos de Inteligência Artificial;
+* Desenvolver classificação automática de imagens;
+* Desenvolver chatbot para triagem de denúncias;
+* Implementar análises preditivas;
+* Expandir os dashboards de Ciência de Dados.
+
+---
+
+# 🎯 Diferenciais da solução
+
+O Fiscaliza Volpe combina **transparência pública, participação cidadã, visualização de dados e geolocalização** em uma única plataforma.
+
+Entre os principais diferenciais estão:
+
+* Centralização de informações públicas;
+* Dashboard visual e interativo;
+* Consulta de projetos de lei em tempo real;
+* Registro de denúncias;
+* Geolocalização automática;
+* Mapa interativo;
+* Busca e filtros avançados;
+* Dashboard administrativo;
+* Estatísticas baseadas em dados reais;
+* API REST com Spring Boot;
+* PostgreSQL;
+* Rate limiting;
+* Interface responsiva;
+* Arquitetura preparada para futuras funcionalidades de IA e Ciência de Dados.
+
+---
+
+# 📄 Licença
+
+Projeto acadêmico desenvolvido para o **Enterprise Challenge 2SIO 2026 — HackGov**, da **FIAP**, em parceria com a **EGESP — Escola de Governo do Estado de São Paulo**.
+
+O projeto tem como objetivo desenvolver uma solução tecnológica capaz de facilitar o acesso às informações públicas e fortalecer a participação da população na fiscalização da gestão pública.
