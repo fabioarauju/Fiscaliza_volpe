@@ -12,7 +12,7 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const { id, status } = await request.json();
+    const { id, status, observacao, foto } = await request.json();
 
     if (!id || !status) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function PATCH(request: Request) {
     const response = await fetch(`${JAVA_API_URL}/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, observacao: observacao ?? null, foto: foto ?? null }),
     });
 
     if (!response.ok) {
@@ -82,6 +82,39 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: "Denúncia excluída com sucesso" });
   } catch (error) {
     console.error("Erro ao excluir denúncia:", error);
+    return NextResponse.json(
+      { error: "Erro de comunicação com o backend" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  const session = (await cookies()).get("admin_session");
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  try {
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
+    }
+
+    const response = await fetch(`${JAVA_API_URL}/${id}/reanalisar`, {
+      method: "POST",
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: "Erro ao reanalisar no backend" },
+        { status: response.status },
+      );
+    }
+    return NextResponse.json(await response.json());
+  } catch (error) {
+    console.error("Erro ao reanalisar denúncia:", error);
     return NextResponse.json(
       { error: "Erro de comunicação com o backend" },
       { status: 500 },

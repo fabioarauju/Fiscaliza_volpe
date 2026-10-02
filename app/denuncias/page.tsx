@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { buscarEnderecoPorCep } from "../services/viacep";
 import {
@@ -12,7 +12,16 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import { Search, Filter, X, ChevronDown, MapPin, Tag, Clock } from "lucide-react";
+import {
+  Search,
+  Filter,
+  X,
+  ChevronDown,
+  MapPin,
+  Tag,
+  Clock,
+  Camera,
+} from "lucide-react";
 
 const MapaDenuncias = dynamic(() => import("../../components/MapaDenuncias"), {
   ssr: false,
@@ -27,7 +36,7 @@ const CORES_CATEGORIA: Record<string, { fill: string; badge: string }> = {
   SANEAMENTO: { fill: "#378ADD", badge: "bg-blue-50 text-blue-700" },
   AMBIENTAL: { fill: "#639922", badge: "bg-green-50 text-green-700" },
   INFRAESTRUTURA: { fill: "#D85A30", badge: "bg-orange-50 text-orange-700" },
-  "PERTURBAÇÃO": { fill: "#7F77DD", badge: "bg-purple-50 text-purple-700" },
+  PERTURBAÇÃO: { fill: "#7F77DD", badge: "bg-purple-50 text-purple-700" },
   OUTROS: { fill: "#B4B2A9", badge: "bg-gray-100 text-gray-600" },
 };
 
@@ -38,14 +47,63 @@ function corCategoria(categoria: string) {
 function getStatusStyle(status: string | undefined) {
   const s = status?.toUpperCase().replace("_", " ");
   if (s === "RESOLVIDO") return "bg-emerald-50 text-emerald-700";
-  if (s === "EM ANALISE" || s === "EM REALIZAÇÃO") return "bg-blue-50 text-blue-700";
+  if (s === "EM ANALISE" || s === "EM REALIZAÇÃO")
+    return "bg-blue-50 text-blue-700";
   if (s === "ARQUIVADA") return "bg-gray-100 text-gray-500";
   return "bg-amber-50 text-amber-700";
 }
 
+// Reduz a foto no navegador antes de enviar (máx. 1280px, JPEG 80%).
+// Foto de celular de 5 MB vira ~200–400 KB: envio rápido e barato pro Gemini.
+function comprimirImagem(
+  file: File,
+  maxLado = 1280,
+  qualidade = 0.8,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas
+        .getContext("2d")
+        ?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", qualidade));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível ler a imagem."));
+    };
+    img.src = url;
+  });
+}
+
 function statusLabel(s: string) {
-  const m: Record<string, string> = { PENDENTE: "Pendente", EM_ANALISE: "Em análise", RESOLVIDO: "Resolvido", ARQUIVADA: "Arquivada" };
+  const m: Record<string, string> = {
+    PENDENTE: "Pendente",
+    EM_ANALISE: "Em análise",
+    RESOLVIDO: "Resolvido",
+    ARQUIVADA: "Cancelada",
+  };
   return m[s] || s?.replace("_", " ") || "Pendente";
+}
+
+// Foto com aviso caso não carregue
+function FotoResolucao({ src, alt, className }: { src: string; alt: string; className: string }) {
+  const [erro, setErro] = useState(false);
+  if (erro) {
+    return (
+      <div className="text-xs text-red-600 bg-red-50 rounded-lg p-3">
+        Não foi possível carregar a foto de como ficou.
+      </div>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className={className} onError={() => setErro(true)} />;
 }
 
 export default function DenunciasPage() {
@@ -68,6 +126,51 @@ export default function DenunciasPage() {
   const [resultadoBusca, setResultadoBusca] = useState<any>(null);
   const [buscando, setBuscando] = useState(false);
   const [erroBusca, setErroBusca] = useState("");
+
+  // ─── Foto da denúncia ──────────────────────────────────────
+  const [foto, setFoto] = useState<{
+    dataUrl: string;
+    nome: string;
+    kb: number;
+  } | null>(null);
+  const [erroFoto, setErroFoto] = useState("");
+  const [processandoFoto, setProcessandoFoto] = useState(false);
+  const [arrastando, setArrastando] = useState(false);
+  const inputFotoRef = useRef<HTMLInputElement>(null);
+
+  async function selecionarFoto(file?: File | null) {
+    setErroFoto("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErroFoto("Envie um arquivo de imagem (JPG, PNG, WEBP...).");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setErroFoto("Imagem muito grande (máx. 15 MB).");
+      return;
+    }
+    setProcessandoFoto(true);
+    try {
+      const dataUrl = await comprimirImagem(file);
+      setFoto({
+        dataUrl,
+        nome: file.name,
+        kb: Math.round((dataUrl.length * 3) / 4 / 1024),
+      });
+    } catch (err) {
+      setErroFoto(
+        err instanceof Error ? err.message : "Erro ao processar a imagem.",
+      );
+    } finally {
+      setProcessandoFoto(false);
+    }
+  }
+
+  function removerFoto() {
+    setFoto(null);
+    setErroFoto("");
+    if (inputFotoRef.current) inputFotoRef.current.value = "";
+  }
 
   // ─── Filtros ───────────────────────────────────────────────
   const [filtroTexto, setFiltroTexto] = useState("");
@@ -108,22 +211,39 @@ export default function DenunciasPage() {
       if (filtroCidade && d.cidade !== filtroCidade) return false;
       if (filtroTexto) {
         const q = filtroTexto.toLowerCase();
-        const campos = [d.titulo, d.descricao, d.bairro, d.rua, d.cidade, d.estado, d.categoria, d.id].map((v) => (v || "").toLowerCase());
+        const campos = [
+          d.titulo,
+          d.descricao,
+          d.bairro,
+          d.rua,
+          d.cidade,
+          d.estado,
+          d.categoria,
+          d.id,
+        ].map((v) => (v || "").toLowerCase());
         if (!campos.some((c) => c.includes(q))) return false;
       }
       return true;
     });
   }, [denuncias, filtroTexto, filtroStatus, filtroCategoria, filtroCidade]);
 
-  const filtrosAtivos = [filtroTexto, filtroStatus, filtroCategoria, filtroCidade].filter(Boolean).length;
+  const filtrosAtivos = [
+    filtroTexto,
+    filtroStatus,
+    filtroCategoria,
+    filtroCidade,
+  ].filter(Boolean).length;
 
   const dadosGrafico: { name: string; value: number }[] = Object.values(
-    denunciasFiltradas.reduce((acc: Record<string, { name: string; value: number }>, { categoria }) => {
-      const key = categoria || "OUTROS";
-      acc[key] = acc[key] || { name: key, value: 0 };
-      acc[key].value += 1;
-      return acc;
-    }, {}),
+    denunciasFiltradas.reduce(
+      (acc: Record<string, { name: string; value: number }>, { categoria }) => {
+        const key = categoria || "OUTROS";
+        acc[key] = acc[key] || { name: key, value: 0 };
+        acc[key].value += 1;
+        return acc;
+      },
+      {},
+    ),
   );
 
   useEffect(() => {
@@ -135,7 +255,9 @@ export default function DenunciasPage() {
         const data = await res.json();
         if (Array.isArray(data)) setDenuncias(data);
       } catch {
-        setErroDenuncias("Não foi possível carregar as denúncias. Tente novamente.");
+        setErroDenuncias(
+          "Não foi possível carregar as denúncias. Tente novamente.",
+        );
       } finally {
         setLoadingDenuncias(false);
       }
@@ -174,7 +296,7 @@ export default function DenunciasPage() {
       const response = await fetch("/denuncias/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, foto: foto?.dataUrl ?? null }),
       });
 
       const data = await response.json().catch(() => null);
@@ -191,8 +313,12 @@ export default function DenunciasPage() {
       setDenuncias((prev) => [data, ...prev]);
       setSucessoEnvio(true);
       setProtocolo(data.id || "");
+      removerFoto();
       setTouched({});
-      setTimeout(() => { setSucessoEnvio(false); setProtocolo(""); }, 15000);
+      setTimeout(() => {
+        setSucessoEnvio(false);
+        setProtocolo("");
+      }, 15000);
       setFormData({
         titulo: "",
         categoria: "",
@@ -208,7 +334,9 @@ export default function DenunciasPage() {
       });
     } catch (err) {
       console.error("Erro de rede ao enviar denúncia:", err);
-      setErroEnvio("Erro de conexão. Verifique sua internet e tente novamente.");
+      setErroEnvio(
+        "Erro de conexão. Verifique sua internet e tente novamente.",
+      );
     } finally {
       setEnviando(false);
     }
@@ -228,15 +356,21 @@ export default function DenunciasPage() {
       <section className="bg-white border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 py-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Denúncias</h1>
-          <p className="text-gray-500">Registre problemas urbanos e acompanhe o andamento.</p>
+          <p className="text-gray-500">
+            Registre problemas urbanos e acompanhe o andamento.
+          </p>
         </div>
       </section>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* BUSCA POR PROTOCOLO */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-1">Acompanhar denúncia</h2>
-          <p className="text-xs text-gray-400 mb-4">Informe o protocolo recebido ao enviar sua denúncia.</p>
+          <h2 className="text-base font-bold text-gray-900 mb-1">
+            Acompanhar denúncia
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Informe o protocolo recebido ao enviar sua denúncia.
+          </p>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
@@ -245,23 +379,33 @@ export default function DenunciasPage() {
               setErroBusca("");
               setResultadoBusca(null);
               try {
-                const res = await fetch(`/denuncias/api/${buscaProtocolo.trim()}`);
+                const res = await fetch(
+                  `/denuncias/api/${buscaProtocolo.trim()}`,
+                );
                 if (res.ok) {
                   setResultadoBusca(await res.json());
                 } else {
-                  const encontrada = denuncias.find((d) => d.id === buscaProtocolo.trim());
+                  const encontrada = denuncias.find(
+                    (d) => d.id === buscaProtocolo.trim(),
+                  );
                   if (encontrada) {
                     setResultadoBusca(encontrada);
                   } else {
-                    setErroBusca("Nenhuma denúncia encontrada com esse protocolo.");
+                    setErroBusca(
+                      "Nenhuma denúncia encontrada com esse protocolo.",
+                    );
                   }
                 }
               } catch {
-                const encontrada = denuncias.find((d) => d.id === buscaProtocolo.trim());
+                const encontrada = denuncias.find(
+                  (d) => d.id === buscaProtocolo.trim(),
+                );
                 if (encontrada) {
                   setResultadoBusca(encontrada);
                 } else {
-                  setErroBusca("Nenhuma denúncia encontrada com esse protocolo.");
+                  setErroBusca(
+                    "Nenhuma denúncia encontrada com esse protocolo.",
+                  );
                 }
               } finally {
                 setBuscando(false);
@@ -286,14 +430,20 @@ export default function DenunciasPage() {
           </form>
 
           {erroBusca && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3">{erroBusca}</p>
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3">
+              {erroBusca}
+            </p>
           )}
 
           {resultadoBusca && (
             <div className="mt-4 bg-gray-50 rounded-lg p-5 border border-gray-100">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">{resultadoBusca.titulo}</h3>
-                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${getStatusStyle(resultadoBusca.status)}`}>
+                <h3 className="text-sm font-bold text-gray-900">
+                  {resultadoBusca.titulo}
+                </h3>
+                <span
+                  className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${getStatusStyle(resultadoBusca.status)}`}
+                >
                   {statusLabel(resultadoBusca.status)}
                 </span>
               </div>
@@ -301,31 +451,92 @@ export default function DenunciasPage() {
                 <div>
                   <span className="text-xs text-gray-400">Categoria</span>
                   <p className="text-gray-700">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${corCategoria(resultadoBusca.categoria).badge}`}>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${corCategoria(resultadoBusca.categoria).badge}`}
+                    >
                       {resultadoBusca.categoria}
                     </span>
                   </p>
                 </div>
                 <div>
                   <span className="text-xs text-gray-400">Data</span>
-                  <p className="text-gray-700 font-mono text-xs">{new Date(resultadoBusca.data).toLocaleDateString("pt-BR")}</p>
+                  <p className="text-gray-700 font-mono text-xs">
+                    {new Date(resultadoBusca.data).toLocaleDateString("pt-BR")}
+                  </p>
                 </div>
                 <div>
                   <span className="text-xs text-gray-400">Local</span>
-                  <p className="text-gray-700">{resultadoBusca.bairro} — {resultadoBusca.cidade}/{resultadoBusca.estado}</p>
+                  <p className="text-gray-700">
+                    {resultadoBusca.bairro} — {resultadoBusca.cidade}/
+                    {resultadoBusca.estado}
+                  </p>
                 </div>
                 <div>
                   <span className="text-xs text-gray-400">Endereço</span>
-                  <p className="text-gray-700">{resultadoBusca.rua}, {resultadoBusca.numero}</p>
+                  <p className="text-gray-700">
+                    {resultadoBusca.rua}, {resultadoBusca.numero}
+                  </p>
                 </div>
               </div>
               <div className="mt-3">
                 <span className="text-xs text-gray-400">Descrição</span>
-                <p className="text-sm text-gray-600 mt-0.5">{resultadoBusca.descricao}</p>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {resultadoBusca.descricao}
+                </p>
               </div>
-              <div className="mt-3">
+              {resultadoBusca.temFoto && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">
+                    Foto enviada na denúncia
+                  </p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/denuncias/api/${resultadoBusca.id}/foto`}
+                    alt="Foto da denúncia"
+                    className="w-full max-h-72 object-cover rounded-lg border border-gray-100"
+                  />
+                </div>
+              )}
+              {(resultadoBusca.status === "RESOLVIDO" ||
+                resultadoBusca.status === "ARQUIVADA") && (
+                <div
+                  className={`mt-8 rounded-xl border p-5 text-sm ${
+                    resultadoBusca.status === "RESOLVIDO"
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-900"
+                      : "bg-gray-100 border-gray-200 text-gray-800"
+                  }`}
+                >
+                  <p className="text-sm font-bold mb-4">
+                    {resultadoBusca.status === "RESOLVIDO"
+                      ? "Resposta da prefeitura: denúncia resolvida"
+                      : "Resposta da prefeitura: denúncia cancelada"}
+                  </p>
+                  <p className="text-xs font-semibold opacity-70 mb-1.5">
+                    Observação
+                  </p>
+                  <p className="whitespace-pre-line leading-relaxed">
+                    {resultadoBusca.observacaoResolucao ||
+                      "Nenhuma observação foi registrada."}
+                  </p>
+                  {resultadoBusca.temFotoResolucao && (
+                    <div className="mt-5 pt-5 border-t border-emerald-200">
+                      <p className="text-xs font-semibold opacity-70 mb-2">
+                        Atualização
+                      </p>
+                      <FotoResolucao
+                        src={`/denuncias/api/${resultadoBusca.id}/foto-resolucao?v=${encodeURIComponent(resultadoBusca.dataResolucao ?? "")}`}
+                        alt="Foto da atualização"
+                        className="w-full max-h-72 object-cover rounded-lg border border-emerald-100"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="mt-6">
                 <span className="text-xs text-gray-400">Protocolo</span>
-                <p className="text-xs text-gray-500 font-mono mt-0.5">{resultadoBusca.id}</p>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">
+                  {resultadoBusca.id}
+                </p>
               </div>
             </div>
           )}
@@ -339,7 +550,9 @@ export default function DenunciasPage() {
         {/* ─── FILTROS + BUSCA ─── */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-900">Buscar denúncias</h2>
+            <h2 className="text-base font-bold text-gray-900">
+              Buscar denúncias
+            </h2>
             {filtrosAtivos > 0 && (
               <button
                 onClick={limparFiltros}
@@ -353,12 +566,18 @@ export default function DenunciasPage() {
 
           {/* Barra de busca por texto */}
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Buscar por título, descrição, bairro, rua, cidade ou protocolo..."
               value={filtroTexto}
-              onChange={(e) => { setFiltroTexto(e.target.value); setItensExibidos(10); }}
+              onChange={(e) => {
+                setFiltroTexto(e.target.value);
+                setItensExibidos(10);
+              }}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition"
             />
             {filtroTexto && (
@@ -373,23 +592,30 @@ export default function DenunciasPage() {
 
           {/* Filtros rápidos por status */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {["", "PENDENTE", "EM_ANALISE", "RESOLVIDO", "ARQUIVADA"].map((s) => {
-              const count = s ? denuncias.filter((d) => d.status === s).length : denuncias.length;
-              return (
-                <button
-                  key={s}
-                  onClick={() => { setFiltroStatus(s); setItensExibidos(10); }}
-                  className={`px-3 py-1.5 rounded-full border text-xs font-medium transition ${
-                    filtroStatus === s
-                      ? "bg-blue-500 text-white border-blue-500"
-                      : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {s === "" ? "Todas" : statusLabel(s)}
-                  <span className="ml-1 opacity-70">({count})</span>
-                </button>
-              );
-            })}
+            {["", "PENDENTE", "EM_ANALISE", "RESOLVIDO", "ARQUIVADA"].map(
+              (s) => {
+                const count = s
+                  ? denuncias.filter((d) => d.status === s).length
+                  : denuncias.length;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setFiltroStatus(s);
+                      setItensExibidos(10);
+                    }}
+                    className={`px-3 py-1.5 rounded-full border text-xs font-medium transition ${
+                      filtroStatus === s
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {s === "" ? "Todas" : statusLabel(s)}
+                    <span className="ml-1 opacity-70">({count})</span>
+                  </button>
+                );
+              },
+            )}
           </div>
 
           {/* Filtros avançados (categoria + cidade) */}
@@ -399,7 +625,10 @@ export default function DenunciasPage() {
           >
             <Filter size={14} />
             Filtros avançados
-            <ChevronDown size={14} className={`transition-transform ${filtrosAbertos ? "rotate-180" : ""}`} />
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${filtrosAbertos ? "rotate-180" : ""}`}
+            />
           </button>
 
           {filtrosAbertos && (
@@ -411,12 +640,17 @@ export default function DenunciasPage() {
                 </label>
                 <select
                   value={filtroCategoria}
-                  onChange={(e) => { setFiltroCategoria(e.target.value); setItensExibidos(10); }}
+                  onChange={(e) => {
+                    setFiltroCategoria(e.target.value);
+                    setItensExibidos(10);
+                  }}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="">Todas as categorias</option>
                   {categorias.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -427,12 +661,17 @@ export default function DenunciasPage() {
                 </label>
                 <select
                   value={filtroCidade}
-                  onChange={(e) => { setFiltroCidade(e.target.value); setItensExibidos(10); }}
+                  onChange={(e) => {
+                    setFiltroCidade(e.target.value);
+                    setItensExibidos(10);
+                  }}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition"
                 >
                   <option value="">Todas as cidades</option>
                   {cidades.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -452,8 +691,12 @@ export default function DenunciasPage() {
 
         {/* GRÁFICO */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-1">Resumo de ocorrências</h2>
-          <p className="text-xs text-gray-400 mb-4">Distribuição por categoria{filtrosAtivos > 0 ? " (filtrado)" : ""}</p>
+          <h2 className="text-base font-bold text-gray-900 mb-1">
+            Resumo de ocorrências
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Distribuição por categoria{filtrosAtivos > 0 ? " (filtrado)" : ""}
+          </p>
           {denunciasFiltradas.length > 0 ? (
             <div className="w-full h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -464,9 +707,13 @@ export default function DenunciasPage() {
                     cy="50%"
                     outerRadius={90}
                     dataKey="value"
-                    label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
-                    }
+                    label={({
+                      name,
+                      percent,
+                    }: {
+                      name?: string;
+                      percent?: number;
+                    }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   >
                     {dadosGrafico.map((entry) => (
                       <Cell
@@ -482,7 +729,9 @@ export default function DenunciasPage() {
             </div>
           ) : (
             <div className="h-24 flex items-center justify-center text-gray-400 text-sm">
-              {filtrosAtivos > 0 ? "Nenhuma denúncia corresponde aos filtros." : "Aguardando dados..."}
+              {filtrosAtivos > 0
+                ? "Nenhuma denúncia corresponde aos filtros."
+                : "Aguardando dados..."}
             </div>
           )}
         </div>
@@ -492,12 +741,25 @@ export default function DenunciasPage() {
           <h2 className="text-xl font-semibold text-black mb-6">
             Nova denúncia
           </h2>
-          <form onSubmit={(e) => {
-            setTouched({ titulo: true, categoria: true, cep: true, numero: true, descricao: true });
-            handleSubmit(e);
-          }} className="space-y-4" noValidate>
+          <form
+            onSubmit={(e) => {
+              setTouched({
+                titulo: true,
+                categoria: true,
+                cep: true,
+                numero: true,
+                descricao: true,
+              });
+              handleSubmit(e);
+            }}
+            className="space-y-4"
+            noValidate
+          >
             <div>
-              <label htmlFor="den-titulo" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="den-titulo"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Título da denúncia <span className="text-red-500">*</span>
               </label>
               <input
@@ -509,19 +771,26 @@ export default function DenunciasPage() {
                     : "border-gray-300 focus:ring-blue-500"
                 }`}
                 value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, titulo: e.target.value })
+                }
                 onBlur={() => setTouched((t) => ({ ...t, titulo: true }))}
                 aria-required="true"
                 aria-invalid={touched.titulo && !formData.titulo.trim()}
                 required
               />
               {touched.titulo && !formData.titulo.trim() && (
-                <p className="text-xs text-red-500 mt-1">Informe um título para a denúncia.</p>
+                <p className="text-xs text-red-500 mt-1">
+                  Informe um título para a denúncia.
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="den-categoria" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="den-categoria"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Categoria <span className="text-red-500">*</span>
               </label>
               <select
@@ -532,7 +801,9 @@ export default function DenunciasPage() {
                     : "border-gray-300 focus:ring-1 focus:ring-blue-500"
                 }`}
                 value={formData.categoria}
-                onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoria: e.target.value })
+                }
                 onBlur={() => setTouched((t) => ({ ...t, categoria: true }))}
                 aria-required="true"
                 aria-invalid={touched.categoria && !formData.categoria}
@@ -545,14 +816,24 @@ export default function DenunciasPage() {
                 <option value="PERTURBAÇÃO">Perturbação</option>
               </select>
               {touched.categoria && !formData.categoria && (
-                <p className="text-xs text-red-500 mt-1">Selecione uma categoria.</p>
+                <p className="text-xs text-red-500 mt-1">
+                  Selecione uma categoria.
+                </p>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="den-cep" className="block text-sm font-medium text-gray-700 mb-1">
-                  CEP <span className="text-red-500">*</span> {loadingCep && <span className="text-blue-500 text-xs ml-1">buscando...</span>}
+                <label
+                  htmlFor="den-cep"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  CEP <span className="text-red-500">*</span>{" "}
+                  {loadingCep && (
+                    <span className="text-blue-500 text-xs ml-1">
+                      buscando...
+                    </span>
+                  )}
                 </label>
                 <input
                   id="den-cep"
@@ -567,15 +848,22 @@ export default function DenunciasPage() {
                   onBlur={() => setTouched((t) => ({ ...t, cep: true }))}
                   maxLength={9}
                   aria-required="true"
-                  aria-invalid={touched.cep && formData.cep.replace("-", "").length < 8}
+                  aria-invalid={
+                    touched.cep && formData.cep.replace("-", "").length < 8
+                  }
                   required
                 />
                 {touched.cep && formData.cep.replace("-", "").length < 8 && (
-                  <p className="text-xs text-red-500 mt-1">Informe um CEP válido com 8 dígitos.</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    Informe um CEP válido com 8 dígitos.
+                  </p>
                 )}
               </div>
               <div>
-                <label htmlFor="den-bairro" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="den-bairro"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Bairro
                 </label>
                 <input
@@ -591,7 +879,10 @@ export default function DenunciasPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="den-cidade" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="den-cidade"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Cidade
                 </label>
                 <input
@@ -604,7 +895,10 @@ export default function DenunciasPage() {
                 />
               </div>
               <div>
-                <label htmlFor="den-estado" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="den-estado"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Estado (UF)
                 </label>
                 <input
@@ -619,7 +913,10 @@ export default function DenunciasPage() {
             </div>
 
             <div>
-              <label htmlFor="den-numero" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="den-numero"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Número ou referência <span className="text-red-500">*</span>
               </label>
               <input
@@ -631,19 +928,26 @@ export default function DenunciasPage() {
                     : "border-gray-300 focus:ring-blue-500"
                 }`}
                 value={formData.numero}
-                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, numero: e.target.value })
+                }
                 onBlur={() => setTouched((t) => ({ ...t, numero: true }))}
                 aria-required="true"
                 aria-invalid={touched.numero && !formData.numero.trim()}
                 required
               />
               {touched.numero && !formData.numero.trim() && (
-                <p className="text-xs text-red-500 mt-1">Informe o número ou uma referência do local.</p>
+                <p className="text-xs text-red-500 mt-1">
+                  Informe o número ou uma referência do local.
+                </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="den-descricao" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="den-descricao"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Descrição detalhada <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -656,30 +960,128 @@ export default function DenunciasPage() {
                     : "border-gray-300 focus:ring-blue-500"
                 }`}
                 value={formData.descricao}
-                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, descricao: e.target.value })
+                }
                 onBlur={() => setTouched((t) => ({ ...t, descricao: true }))}
                 aria-required="true"
                 aria-invalid={touched.descricao && !formData.descricao.trim()}
                 required
               />
               {touched.descricao && !formData.descricao.trim() && (
-                <p className="text-xs text-red-500 mt-1">Descreva o problema encontrado.</p>
+                <p className="text-xs text-red-500 mt-1">
+                  Descreva o problema encontrado.
+                </p>
               )}
-              <p className="text-xs text-gray-400 mt-1">{formData.descricao.length}/500 caracteres</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {formData.descricao.length}/500 caracteres
+              </p>
+            </div>
+
+            {/* FOTO */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Foto da ocorrência{" "}
+                <span className="text-gray-400 font-normal">
+                  (opcional — ajuda a equipe a avaliar o problema)
+                </span>
+              </label>
+
+              <input
+                ref={inputFotoRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => selecionarFoto(e.target.files?.[0])}
+              />
+
+              {!foto ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => inputFotoRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      inputFotoRef.current?.click();
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setArrastando(true);
+                  }}
+                  onDragLeave={() => setArrastando(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setArrastando(false);
+                    selecionarFoto(e.dataTransfer.files?.[0]);
+                  }}
+                  className={`w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                    arrastando
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                  }`}
+                >
+                  <Camera size={28} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-700">
+                    {processandoFoto
+                      ? "Processando imagem..."
+                      : "Clique para tirar/escolher uma foto ou arraste aqui"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    JPG, PNG ou WEBP — até 15 MB
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 border border-gray-200 rounded-lg p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={foto.dataUrl}
+                    alt="Pré-visualização da foto"
+                    className="w-24 h-24 object-cover rounded-md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-black truncate">{foto.nome}</p>
+                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                      {foto.kb} KB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removerFoto}
+                    className="text-sm text-red-600 hover:underline shrink-0"
+                  >
+                    Remover
+                  </button>
+                </div>
+              )}
+
+              {erroFoto && (
+                <p className="text-xs text-red-500 mt-1">{erroFoto}</p>
+              )}
             </div>
 
             {erroEnvio && (
-              <p role="alert" className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              <p
+                role="alert"
+                className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"
+              >
                 {erroEnvio}
               </p>
             )}
 
             {sucessoEnvio && (
-              <div role="status" className="bg-emerald-50 rounded-lg px-4 py-3 border border-emerald-200">
-                <p className="text-sm text-emerald-700 font-medium">Denúncia enviada com sucesso!</p>
+              <div
+                role="status"
+                className="bg-emerald-50 rounded-lg px-4 py-3 border border-emerald-200"
+              >
+                <p className="text-sm text-emerald-700 font-medium">
+                  Denúncia enviada com sucesso!
+                </p>
                 {protocolo && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-emerald-600">Seu protocolo:</span>
+                    <span className="text-xs text-emerald-600">
+                      Seu protocolo:
+                    </span>
                     <code className="bg-white text-emerald-800 px-2 py-0.5 rounded text-xs font-mono border border-emerald-200 select-all">
                       {protocolo}
                     </code>
@@ -692,19 +1094,23 @@ export default function DenunciasPage() {
                     </button>
                   </div>
                 )}
-                <p className="text-xs text-emerald-500 mt-1.5">Guarde o protocolo para acompanhar sua denúncia.</p>
+                <p className="text-xs text-emerald-500 mt-1.5">
+                  Guarde o protocolo para acompanhar sua denúncia.
+                </p>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={loadingCep || enviando}
+              disabled={loadingCep || enviando || processandoFoto}
               className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium text-sm shadow hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingCep
                 ? "Localizando..."
                 : enviando
-                  ? "Enviando..."
+                  ? foto
+                    ? "Enviando..."
+                    : "Enviando..."
                   : "Enviar denúncia"}
             </button>
           </form>
@@ -740,53 +1146,66 @@ export default function DenunciasPage() {
                 : "Nenhuma denúncia registrada ainda. Seja o primeiro a registrar!"}
             </div>
           ) : (
-          <>
-          <table className="w-full text-left">
-            <thead className="border-b border-gray-100">
-              <tr className="text-gray-500 font-medium text-xs">
-                <th className="p-4">Denúncia</th>
-                <th className="p-4">Categoria</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {denunciasFiltradas.slice(0, itensExibidos).map((d) => (
-                <tr
-                  key={d.id}
-                  className="hover:bg-blue-50/40 transition-colors cursor-pointer"
-                  onClick={() => setDenunciaSelecionada(d)}
+            <>
+              <table className="w-full text-left">
+                <thead className="border-b border-gray-100">
+                  <tr className="text-gray-500 font-medium text-xs">
+                    <th className="p-4">Denúncia</th>
+                    <th className="p-4">Categoria</th>
+                    <th className="p-4 text-center">Status</th>
+                    <th className="p-4 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {denunciasFiltradas.slice(0, itensExibidos).map((d) => (
+                    <tr
+                      key={d.id}
+                      className="hover:bg-blue-50/40 transition-colors cursor-pointer"
+                      onClick={() => setDenunciaSelecionada(d)}
+                    >
+                      <td className="p-4">
+                        <span className="font-medium text-gray-900 text-sm block">
+                          {d.titulo}
+                        </span>
+                        <span className="text-xs text-gray-400 mt-0.5 block">
+                          {d.bairro}
+                          {d.cidade ? ` — ${d.cidade}/${d.estado}` : ""} ·{" "}
+                          {new Date(d.data).toLocaleDateString("pt-BR")}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${corCategoria(d.categoria).badge}`}
+                        >
+                          {d.categoria}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${getStatusStyle(d.status)}`}
+                        >
+                          {statusLabel(d.status)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <span className="text-sm text-blue-600 font-medium">
+                          Ver →
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {denunciasFiltradas.length > itensExibidos && (
+                <button
+                  onClick={() => setItensExibidos((prev) => prev + 10)}
+                  className="w-full p-4 bg-gray-50 text-blue-600 font-medium text-sm border-t border-gray-100 hover:bg-gray-100 transition"
                 >
-                  <td className="p-4">
-                    <span className="font-medium text-gray-900 text-sm block">{d.titulo}</span>
-                    <span className="text-xs text-gray-400 mt-0.5 block">{d.bairro}{d.cidade ? ` — ${d.cidade}/${d.estado}` : ""} · {new Date(d.data).toLocaleDateString("pt-BR")}</span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${corCategoria(d.categoria).badge}`}>
-                      {d.categoria}
-                    </span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${getStatusStyle(d.status)}`}>
-                      {statusLabel(d.status)}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <span className="text-sm text-blue-600 font-medium">Ver →</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {denunciasFiltradas.length > itensExibidos && (
-            <button
-              onClick={() => setItensExibidos((prev) => prev + 10)}
-              className="w-full p-4 bg-gray-50 text-blue-600 font-medium text-sm border-t border-gray-100 hover:bg-gray-100 transition"
-            >
-              Ver mais ({denunciasFiltradas.length - itensExibidos} restantes)
-            </button>
-          )}
-          </>
+                  Ver mais ({denunciasFiltradas.length - itensExibidos}{" "}
+                  restantes)
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -833,6 +1252,56 @@ export default function DenunciasPage() {
               <div className="bg-gray-50 rounded-lg p-4 text-sm leading-relaxed text-gray-700">
                 {denunciaSelecionada.descricao}
               </div>
+
+              {denunciaSelecionada.temFoto && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">
+                    Foto enviada na denúncia
+                  </p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/denuncias/api/${denunciaSelecionada.id}/foto`}
+                    alt="Foto da denúncia"
+                    className="w-full max-h-72 object-cover rounded-lg border border-gray-100"
+                  />
+                </div>
+              )}
+
+              {(denunciaSelecionada.status === "RESOLVIDO" ||
+                denunciaSelecionada.status === "ARQUIVADA") && (
+                <div
+                  className={`mt-8 rounded-xl border p-5 text-sm ${
+                    denunciaSelecionada.status === "RESOLVIDO"
+                      ? "bg-emerald-50 border-emerald-100 text-emerald-900"
+                      : "bg-gray-100 border-gray-200 text-gray-800"
+                  }`}
+                >
+                  <p className="text-sm font-bold mb-4">
+                    {denunciaSelecionada.status === "RESOLVIDO"
+                      ? "Resposta da prefeitura: denúncia resolvida"
+                      : "Resposta da prefeitura: denúncia cancelada"}
+                  </p>
+                  <p className="text-xs font-semibold opacity-70 mb-1.5">
+                    Observação
+                  </p>
+                  <p className="whitespace-pre-line leading-relaxed">
+                    {denunciaSelecionada.observacaoResolucao ||
+                      "Nenhuma observação foi registrada."}
+                  </p>
+                  {denunciaSelecionada.temFotoResolucao && (
+                    <div className="mt-5 pt-5 border-t border-emerald-200">
+                      <p className="text-xs font-semibold opacity-70 mb-2">
+                        Atualização
+                      </p>
+                      <FotoResolucao
+                        src={`/denuncias/api/${denunciaSelecionada.id}/foto-resolucao?v=${encodeURIComponent(denunciaSelecionada.dataResolucao ?? "")}`}
+                        alt="Foto da atualização"
+                        className="w-full max-h-72 object-cover rounded-lg border border-emerald-100"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 text-sm pt-2">
                 <div>

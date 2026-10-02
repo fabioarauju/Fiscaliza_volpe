@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+// O Java analisa a foto com o Gemini antes de responder: pode levar alguns segundos
+export const maxDuration = 60;
+
+const TAMANHO_MAX_FOTO = 4 * 1024 * 1024; // ~4 MB em base64 (~3 MB de imagem)
 
 const JAVA_API_URL =
   process.env.API_JAVA_URL ||
@@ -45,8 +49,34 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    const { foto, ...campos } = await request.json();
 
+    const vazio = (v: unknown) => typeof v !== "string" || !v.trim();
+    if (
+      vazio(campos.titulo) ||
+      vazio(campos.categoria) ||
+      vazio(campos.cep) ||
+      vazio(campos.numero) ||
+      vazio(campos.descricao)
+    ) {
+      return NextResponse.json(
+        { error: "Preencha título, categoria, CEP, número e descrição." },
+        { status: 400 },
+      );
+    }
+
+    // Validação rápida aqui; a análise do Gemini e a prioridade
+    // são feitas no back-end Java ao salvar.
+    if (foto && !/^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(foto)) {
+      return NextResponse.json({ error: "Formato de foto inválido." }, { status: 400 });
+    }
+    if (foto && foto.length > TAMANHO_MAX_FOTO) {
+      return NextResponse.json({ error: "Foto muito grande (máx. ~3 MB)." }, { status: 413 });
+    }
+
+    const body = { ...campos, foto: foto ?? null };
+
+    // Salva no Java (que chama o Gemini)
     const response = await fetch(JAVA_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

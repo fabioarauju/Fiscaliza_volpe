@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LayoutGrid, FileText, Flag, BarChart3, Plus, Pencil, Eye,
   Trash2, Check, Archive, LogOut, X, Loader2, RefreshCw,
-  AlertTriangle, CheckCircle2,
+  AlertTriangle, CheckCircle2, Sparkles, Camera,
 } from "lucide-react";
 
 // ─── Static Data (projetos & gastos) ─────────────────────────
@@ -50,9 +50,68 @@ const statusDenunciaCor: Record<string, string> = {
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    PENDENTE: "Pendente", EM_ANALISE: "Em análise", RESOLVIDO: "Resolvido", ARQUIVADA: "Arquivada",
+    PENDENTE: "Pendente", EM_ANALISE: "Em análise", RESOLVIDO: "Resolvido", ARQUIVADA: "Cancelada",
   };
   return labels[status] || status;
+}
+
+// ─── Prioridade (IA / Gemini) ────────────────────────────────
+const PRIORIDADE_INFO: Record<string, { label: string; badge: string; bar: string; ordem: number }> = {
+  ALTA: { label: "Alta", badge: "bg-red-50 text-red-700", bar: "#ef4444", ordem: 0 },
+  MEDIA: { label: "Média", badge: "bg-amber-50 text-amber-700", bar: "#f59e0b", ordem: 1 },
+  BAIXA: { label: "Baixa", badge: "bg-emerald-50 text-emerald-700", bar: "#10b981", ordem: 2 },
+  NAO_ANALISADA: { label: "Sem análise", badge: "bg-gray-100 text-gray-500", bar: "#94a3b8", ordem: 3 },
+};
+const infoPrioridade = (p?: string | null) => PRIORIDADE_INFO[p ?? ""] ?? PRIORIDADE_INFO.NAO_ANALISADA;
+
+const TAMANHO_LABEL: Record<string, string> = {
+  PEQUENO: "Pequeno", MEDIO: "Médio", GRANDE: "Grande", MUITO_GRANDE: "Muito grande", NAO_APLICAVEL: "Não se aplica",
+};
+
+interface AnaliseIa {
+  imagemCondizente?: boolean;
+  problemaIdentificado?: string;
+  categoriaSugerida?: string;
+  tamanhoEstimado?: string;
+  riscos?: string[];
+  pontuacao?: number;
+  justificativa?: string;
+  modelo?: string;
+  erro?: string;
+}
+
+function lerAnalise(json?: string | null): AnaliseIa | null {
+  if (!json) return null;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function PrioridadeCell({ prioridade, pontuacao }: { prioridade?: string | null; pontuacao?: number | null }) {
+  const info = infoPrioridade(prioridade);
+  const dica = typeof pontuacao === "number" ? `Gravidade estimada pela IA: ${pontuacao}/100` : "Ainda sem análise da IA";
+  return (
+    <span
+      title={dica}
+      className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${info.badge}`}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: info.bar }} />
+      {info.label}
+    </span>
+  );
+}
+
+// Mais grave primeiro; empate -> maior pontuação -> mais recente
+function ordenarPorPrioridade(a: Denuncia, b: Denuncia) {
+  const pa = infoPrioridade(a.prioridade).ordem;
+  const pb = infoPrioridade(b.prioridade).ordem;
+  if (pa !== pb) return pa - pb;
+  const sa = a.pontuacaoGravidade ?? -1;
+  const sb = b.pontuacaoGravidade ?? -1;
+  if (sa !== sb) return sb - sa;
+  return String(b.data ?? "").localeCompare(String(a.data ?? ""));
 }
 
 // ─── Toast component ────────────────────────────────────────
@@ -189,6 +248,14 @@ interface Denuncia {
   status: string;
   data: string;
   cep: string;
+  // preenchidos pela IA (Gemini)
+  prioridade?: string | null;
+  pontuacaoGravidade?: number | null;
+  analiseIa?: string | null;
+  temFoto?: boolean;
+  observacaoResolucao?: string | null;
+  dataResolucao?: string | null;
+  temFotoResolucao?: boolean;
 }
 
 interface Estatisticas {
@@ -204,6 +271,176 @@ interface Estatisticas {
 // ─── Main ────────────────────────────────────────────────────
 type Tab = "painel" | "projetos" | "denuncias" | "gastos";
 
+// Reduz a foto no navegador antes de enviar (máx. 1280px, JPEG 80%)
+function comprimirImagem(file: File, maxLado = 1280, qualidade = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", qualidade));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível ler a imagem."));
+    };
+    img.src = url;
+  });
+}
+
+// Foto com aviso caso não carregue
+function FotoResolucao({ src, alt, className }: { src: string; alt: string; className: string }) {
+  const [erro, setErro] = useState(false);
+  if (erro) {
+    return (
+      <div className="text-xs text-red-600 bg-red-50 rounded-lg p-3">
+        Não foi possível carregar a foto de como ficou.
+      </div>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className={className} onError={() => setErro(true)} />;
+}
+
+// Janela de resolver/cancelar. Fica num componente separado de propósito:
+// o texto digitado é estado LOCAL daqui, então digitar não re-renderiza o painel inteiro.
+function FinalizarModal({
+  finalizando,
+  onClose,
+  onConfirm,
+}: {
+  finalizando: { id: string; status: "RESOLVIDO" | "ARQUIVADA"; titulo: string };
+  onClose: () => void;
+  onConfirm: (texto: string, fotoDataUrl: string | null) => Promise<void>;
+}) {
+  const [observacao, setObservacao] = useState("");
+  const [fotoRes, setFotoRes] = useState<{ dataUrl: string; nome: string } | null>(null);
+  const [erroFotoRes, setErroFotoRes] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  async function escolherFoto(file?: File | null) {
+    setErroFotoRes("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErroFotoRes("Envie um arquivo de imagem (JPG, PNG, WEBP).");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setErroFotoRes("Imagem muito grande (máx. 15 MB).");
+      return;
+    }
+    try {
+      setFotoRes({ dataUrl: await comprimirImagem(file), nome: file.name });
+    } catch {
+      setErroFotoRes("Não foi possível ler a imagem.");
+    }
+  }
+
+  async function confirmar() {
+    setSalvando(true);
+    try {
+      await onConfirm(observacao.trim(), fotoRes?.dataUrl ?? null);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const resolvida = finalizando.status === "RESOLVIDO";
+
+  return (
+    <div
+      className="fixed inset-0 z-[1001] bg-gray-900/55 flex items-center justify-center p-5"
+      onClick={() => !salvando && onClose()}
+    >
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-gray-900 mb-1">
+          {resolvida ? "Marcar como resolvida" : "Cancelar denúncia"}
+        </h3>
+        <p className="text-xs text-gray-500 mb-4 truncate">{finalizando.titulo}</p>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {resolvida
+            ? "Como foi resolvido? (o cidadão vai ler isto)"
+            : "Motivo do cancelamento (o cidadão vai ler isto)"}
+        </label>
+        <textarea
+          value={observacao}
+          onChange={(e) => setObservacao(e.target.value)}
+          rows={5}
+          maxLength={1000}
+          autoFocus
+          placeholder={
+            resolvida
+              ? "Ex.: Equipe de manutenção tapou o buraco no dia 05/10."
+              : "Ex.: Denúncia duplicada / endereço não localizado."
+          }
+          className="w-full border border-gray-200 rounded-lg p-3 text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="text-[11px] text-gray-400 text-right mb-3">{observacao.length}/1000</div>
+
+        {resolvida && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Foto de como ficou <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            {fotoRes ? (
+              <div className="flex items-center gap-3 border border-gray-200 rounded-lg p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={fotoRes.dataUrl} alt="Prévia" className="w-16 h-16 object-cover rounded-md" />
+                <span className="flex-1 min-w-0 text-xs text-gray-600 truncate">{fotoRes.nome}</span>
+                <button
+                  type="button"
+                  onClick={() => setFotoRes(null)}
+                  className="text-xs font-semibold text-red-600 hover:underline"
+                >
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg py-4 text-sm text-gray-500 cursor-pointer hover:bg-gray-50 transition">
+                <Camera size={16} /> Enviar foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    escolherFoto(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+            {erroFotoRes && <p className="text-xs text-red-600 mt-1">{erroFotoRes}</p>}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            disabled={salvando}
+            className="flex-1 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600"
+          >
+            Voltar
+          </button>
+          <button
+            onClick={confirmar}
+            disabled={salvando || observacao.trim().length < 5}
+            className={`flex-1 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 ${
+              resolvida ? "bg-emerald-500 hover:bg-emerald-600" : "bg-gray-600 hover:bg-gray-700"
+            }`}
+          >
+            {salvando ? "Salvando..." : "Confirmar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("painel");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -216,9 +453,14 @@ export default function AdminDashboard() {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editVal, setEditVal] = useState("");
   const [filtroDenuncia, setFiltroDenuncia] = useState("Todas");
+  const [filtroPrioridade, setFiltroPrioridade] = useState("Todas");
   const [denunciaSelecionada, setDenunciaSelecionada] = useState<Denuncia | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [stats, setStats] = useState<Estatisticas | null>(null);
+  const [fotoAberta, setFotoAberta] = useState<{ id: string; titulo: string } | null>(null);
+  const [finalizando, setFinalizando] = useState<{ id: string; status: "RESOLVIDO" | "ARQUIVADA"; titulo: string } | null>(null);
+  const [reanalisando, setReanalisando] = useState<string | null>(null);
+  const [fotoComErro, setFotoComErro] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   let toastCounter = 0;
@@ -264,6 +506,9 @@ export default function AdminDashboard() {
   }, [carregarDenuncias, carregarEstatisticas]);
 
   const pendentes = denuncias.filter((d) => d.status === "PENDENTE").length;
+  const altaPrioridade = denuncias.filter(
+    (d) => d.prioridade === "ALTA" && d.status !== "RESOLVIDO" && d.status !== "ARQUIVADA",
+  ).length;
 
   async function atualizarStatus(id: string, novoStatus: string) {
     setAtualizando(id);
@@ -284,6 +529,71 @@ export default function AdminDashboard() {
       addToast("Atualizado localmente — erro de conexão", "info");
     } finally {
       setAtualizando(null);
+    }
+  }
+
+  function abrirFinalizar(d: Denuncia, status: "RESOLVIDO" | "ARQUIVADA") {
+    setFinalizando({ id: d.id, status, titulo: d.titulo });
+  }
+
+  async function confirmarFinalizar(texto: string, fotoDataUrl: string | null) {
+    if (!finalizando) return;
+    if (texto.length < 5) {
+      addToast("Escreva uma observação para o cidadão (mín. 5 caracteres)", "info");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/denuncias", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: finalizando.id,
+          status: finalizando.status,
+          observacao: texto,
+          foto: finalizando.status === "RESOLVIDO" ? fotoDataUrl : null,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const salvo = await res.json().catch(() => null);
+      const agora = salvo?.dataResolucao ?? new Date().toISOString();
+      // Verdade vem do servidor: só mostra a foto se ele realmente gravou
+      const temFotoRes = !!salvo?.temFotoResolucao;
+      if (finalizando.status === "RESOLVIDO" && fotoDataUrl && !temFotoRes) {
+        addToast("A observação foi salva, mas a foto NÃO foi gravada — o servidor (Render) pode estar desatualizado.", "info");
+      }
+      setDenuncias((prev) =>
+        prev.map((d) =>
+          d.id === finalizando.id
+            ? { ...d, status: finalizando.status, observacaoResolucao: texto, dataResolucao: agora, temFotoResolucao: temFotoRes }
+            : d,
+        ),
+      );
+      addToast(`Denúncia ${finalizando.status === "RESOLVIDO" ? "resolvida" : "cancelada"} e resposta enviada ao cidadão`, "success");
+      setFinalizando(null);
+      setDenunciaSelecionada(null);
+    } catch {
+      addToast("Não foi possível salvar. Tente de novo.", "info");
+    }
+  }
+
+  async function reanalisarDenuncia(id: string) {
+    setReanalisando(id);
+    try {
+      const res = await fetch("/api/admin/denuncias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error();
+      const nova = await res.json();
+      setDenuncias((prev) => prev.map((d) => (d.id === id ? { ...d, ...nova } : d)));
+      setDenunciaSelecionada((atual) => (atual && atual.id === id ? { ...atual, ...nova } : atual));
+      if (nova.prioridade === "NAO_ANALISADA") addToast("A IA ainda não conseguiu analisar — veja o motivo no detalhe", "info");
+      else addToast("Análise da IA atualizada", "success");
+    } catch {
+      addToast("Não foi possível reanalisar (servidor indisponível?)", "info");
+    } finally {
+      setReanalisando(null);
     }
   }
 
@@ -317,9 +627,11 @@ export default function AdminDashboard() {
     setEditIdx(null);
   }
 
-  const denunciasFiltradas = filtroDenuncia === "Todas"
-    ? denuncias
-    : denuncias.filter((d) => d.status === filtroDenuncia);
+  const denunciasFiltradas = denuncias
+    .filter((d) => filtroDenuncia === "Todas" || d.status === filtroDenuncia)
+    .filter((d) => filtroPrioridade === "Todas" || (d.prioridade || "NAO_ANALISADA") === filtroPrioridade)
+    .sort(ordenarPorPrioridade);
+  const analiseSelecionada = lerAnalise(denunciaSelecionada?.analiseIa);
   const totalEdit = gastosData.reduce((a, s) => a + s.valor, 0);
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -448,11 +760,12 @@ export default function AdminDashboard() {
               <h2 className="text-xl font-bold text-gray-900 mb-1">Visão Geral</h2>
               <p className="text-sm text-gray-500 mb-6">Resumo das atividades do painel.</p>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-7">
                 <Metric label="Total de Denúncias" value={String(stats?.total ?? denuncias.length)} sub={`${stats?.pendentes ?? pendentes} pendentes`} color="#ef4444" />
                 <Metric label="Em Análise" value={String(stats?.emAnalise ?? denuncias.filter(d => d.status === "EM_ANALISE").length)} sub="em andamento" color="#f59e0b" />
                 <Metric label="Resolvidas" value={String(stats?.resolvidas ?? denuncias.filter(d => d.status === "RESOLVIDO").length)} sub="concluídas" color="#10b981" />
-                <Metric label="Arquivadas" value={String(stats?.arquivadas ?? denuncias.filter(d => d.status === "ARQUIVADA").length)} sub="finalizadas" color="#6b7280" />
+                <Metric label="Canceladas" value={String(stats?.arquivadas ?? denuncias.filter(d => d.status === "ARQUIVADA").length)} sub="finalizadas" color="#6b7280" />
+                <Metric label="Alta prioridade" value={String(altaPrioridade)} sub="abertas, segundo a IA" color="#dc2626" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
@@ -572,7 +885,29 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-bold text-gray-900 mb-1">Denúncias</h2>
                   <p className="text-sm text-gray-500">
                     {loadingDenuncias ? "Carregando..." : `${denuncias.length} denúncias — ${pendentes} pendente${pendentes !== 1 ? "s" : ""}`}
+                    {!loadingDenuncias && altaPrioridade > 0 && (
+                      <span className="text-red-600 font-semibold"> · {altaPrioridade} de alta prioridade</span>
+                    )}
                   </p>
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                    <Sparkles size={12} /> Ordenadas pela gravidade calculada pela IA
+                  </p>
+                  <div className="flex gap-1.5 items-center flex-wrap mt-3">
+                    <span className="text-xs text-gray-500 mr-1">Prioridade:</span>
+                    {["Todas", "ALTA", "MEDIA", "BAIXA", "NAO_ANALISADA"].map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setFiltroPrioridade(p)}
+                        className={`px-3 py-1 rounded-full border text-xs font-medium transition ${
+                          filtroPrioridade === p
+                            ? "bg-gray-900 text-white border-gray-900"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        {p === "Todas" ? "Todas" : infoPrioridade(p).label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
                   <button
@@ -625,6 +960,7 @@ export default function AdminDashboard() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr>
+                          <th className={thClass}>Prioridade (IA)</th>
                           <th className={thClass}>Protocolo</th>
                           <th className={thClass}>Título</th>
                           <th className={thClass}>Categoria</th>
@@ -638,12 +974,27 @@ export default function AdminDashboard() {
                         {denunciasFiltradas.map((d) => (
                           <tr key={d.id} className="hover:bg-gray-50/50 transition">
                             <td className={tdClass}>
+                              <PrioridadeCell prioridade={d.prioridade} pontuacao={d.pontuacaoGravidade} />
+                            </td>
+                            <td className={tdClass}>
                               <span className="font-mono text-[11px] text-gray-400" title={d.id}>
                                 {d.id.slice(0, 8)}...
                               </span>
                             </td>
                             <td className={`${tdClass} max-w-[200px]`}>
-                              <span className="font-medium truncate block">{d.titulo}</span>
+                              <span className="font-medium truncate flex items-center gap-1.5">
+                                <span className="truncate">{d.titulo}</span>
+                                {d.temFoto && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setFotoAberta({ id: d.id, titulo: d.titulo })}
+                                    title="Ver foto"
+                                    className="shrink-0 p-1 rounded-md text-blue-500 hover:bg-blue-50 transition"
+                                  >
+                                    <Camera size={14} aria-label="Ver foto" />
+                                  </button>
+                                )}
+                              </span>
                             </td>
                             <td className={tdClass}><span className="text-xs text-gray-500">{d.categoria}</span></td>
                             <td className={tdClass}><span className="text-xs text-gray-500">{d.bairro}</span></td>
@@ -656,7 +1007,7 @@ export default function AdminDashboard() {
                                 {d.status !== "RESOLVIDO" && d.status !== "ARQUIVADA" && (
                                   <>
                                     <ActBtn
-                                      onClick={() => atualizarStatus(d.id, "RESOLVIDO")}
+                                      onClick={() => abrirFinalizar(d, "RESOLVIDO")}
                                       title="Marcar como resolvida"
                                       loading={atualizando === d.id}
                                     >
@@ -673,8 +1024,8 @@ export default function AdminDashboard() {
                                 )}
                                 {d.status !== "ARQUIVADA" && (
                                   <ActBtn
-                                    onClick={() => atualizarStatus(d.id, "ARQUIVADA")}
-                                    title="Arquivar"
+                                    onClick={() => abrirFinalizar(d, "ARQUIVADA")}
+                                    title="Cancelar denúncia"
                                     loading={atualizando === d.id}
                                   >
                                     <Archive size={14} />
@@ -697,7 +1048,7 @@ export default function AdminDashboard() {
                         ))}
                         {denunciasFiltradas.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                            <td colSpan={8} className="px-4 py-10 text-center text-sm text-gray-400">
                               Nenhuma denúncia encontrada com esse filtro.
                             </td>
                           </tr>
@@ -814,10 +1165,39 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {finalizando && (
+            <FinalizarModal
+              key={`${finalizando.id}-${finalizando.status}`}
+              finalizando={finalizando}
+              onClose={() => setFinalizando(null)}
+              onConfirm={confirmarFinalizar}
+            />
+          )}
+
           {/* ── Modal de detalhes ── */}
+          {fotoAberta && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setFotoAberta(null)}
+        >
+          <div className="bg-white rounded-2xl p-3 max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-sm font-semibold text-gray-800 truncate">{fotoAberta.titulo}</span>
+              <button onClick={() => setFotoAberta(null)} className="text-sm text-gray-500 hover:text-gray-800">Fechar</button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/denuncias/api/${fotoAberta.id}/foto`}
+              alt={`Foto da denúncia ${fotoAberta.titulo}`}
+              className="w-full max-h-[75vh] object-contain rounded-lg bg-gray-50"
+            />
+          </div>
+        </div>
+      )}
+
           {denunciaSelecionada && (
             <div className="fixed inset-0 bg-gray-900/55 flex items-center justify-center z-[999] p-5" role="dialog" aria-modal="true" aria-label="Detalhes da denúncia">
-              <div className="w-full max-w-[520px] bg-white rounded-2xl p-6 shadow-2xl">
+              <div className="w-full max-w-[560px] max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 shadow-2xl">
                 <div className="flex justify-between items-center mb-5">
                   <div>
                     <div className="text-xl font-bold text-gray-900">Detalhes da Denúncia</div>
@@ -868,12 +1248,97 @@ export default function AdminDashboard() {
                     <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Data</div>
                     <div className="text-sm text-gray-800">{new Date(denunciaSelecionada.data).toLocaleString("pt-BR")}</div>
                   </div>
+
+                  {denunciaSelecionada.temFoto && (
+                    <div>
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold mb-1">Foto enviada</div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/denuncias/api/${denunciaSelecionada.id}/foto`}
+                        alt="Foto enviada pelo cidadão"
+                        onError={() => setFotoComErro(true)}
+                        onLoad={() => setFotoComErro(false)}
+                        className="w-full max-h-[300px] object-cover rounded-lg border border-gray-100"
+                      />
+                      {fotoComErro && (
+                        <div className="text-xs text-red-600 mt-1">
+                          Não foi possível carregar a foto (verifique o Supabase Storage em /denuncias/diagnostico do back-end).
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="border border-gray-100 bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="text-[11px] text-gray-400 uppercase font-semibold flex items-center gap-1">
+                        <Sparkles size={12} /> Análise da IA (Gemini)
+                      </div>
+                      <PrioridadeCell prioridade={denunciaSelecionada.prioridade} pontuacao={denunciaSelecionada.pontuacaoGravidade} />
+                    </div>
+                    {analiseSelecionada?.erro ? (
+                      <div className="text-sm text-gray-500" title={analiseSelecionada.erro}>
+                        A análise automática não está disponível no momento. Tente novamente em alguns minutos.
+                      </div>
+                    ) : analiseSelecionada ? (
+                      <div className="text-sm text-gray-700 leading-relaxed flex flex-col gap-1.5">
+                        {analiseSelecionada.imagemCondizente === false && (
+                          <div className="text-amber-700 font-semibold flex items-center gap-1.5">
+                            <AlertTriangle size={14} /> A foto parece não corresponder à denúncia.
+                          </div>
+                        )}
+                        <div><strong>Problema:</strong> {analiseSelecionada.problemaIdentificado}</div>
+                        <div>
+                          <strong>Tamanho estimado:</strong>{" "}
+                          {TAMANHO_LABEL[analiseSelecionada.tamanhoEstimado ?? ""] ?? analiseSelecionada.tamanhoEstimado}
+                          {" · "}
+                          <strong>Categoria sugerida:</strong> {analiseSelecionada.categoriaSugerida}
+                        </div>
+                        {!!analiseSelecionada.riscos?.length && (
+                          <div><strong>Riscos:</strong> {analiseSelecionada.riscos.join(", ")}</div>
+                        )}
+                        <div className="text-gray-500">{analiseSelecionada.justificativa}</div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Sem análise automática para esta denúncia.</div>
+                    )}
+                    {denunciaSelecionada.prioridade !== "ALTA" && denunciaSelecionada.prioridade !== "MEDIA" && denunciaSelecionada.prioridade !== "BAIXA" || analiseSelecionada?.erro ? (
+                      <button
+                        onClick={() => reanalisarDenuncia(denunciaSelecionada.id)}
+                        disabled={reanalisando === denunciaSelecionada.id}
+                        className="mt-3 text-sm font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white disabled:opacity-60"
+                      >
+                        {reanalisando === denunciaSelecionada.id ? "Analisando..." : "Tentar analisar de novo"}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
+
+                {(denunciaSelecionada.status === "RESOLVIDO" || denunciaSelecionada.status === "ARQUIVADA") && (
+                  <div className="mt-4 border border-emerald-100 bg-emerald-50 rounded-xl p-4">
+                    <div className="text-[11px] text-emerald-700 uppercase font-semibold mb-1">
+                      Resposta enviada ao cidadão ({denunciaSelecionada.status === "RESOLVIDO" ? "resolvida" : "cancelada"})
+                      {denunciaSelecionada.dataResolucao
+                        ? ` · ${new Date(denunciaSelecionada.dataResolucao).toLocaleString("pt-BR")}`
+                        : ""}
+                    </div>
+                    <div className="text-sm text-gray-800 whitespace-pre-line">
+                      {denunciaSelecionada.observacaoResolucao || "Nenhuma observação registrada (resolvida antes deste recurso)."}
+                    </div>
+                    {denunciaSelecionada.temFotoResolucao && (
+                      <>
+                        <div className="text-[11px] text-emerald-700 uppercase font-semibold mt-3 mb-1">Foto de como ficou</div>
+                        <FotoResolucao src={`/denuncias/api/${denunciaSelecionada.id}/foto-resolucao?v=${encodeURIComponent(denunciaSelecionada.dataResolucao ?? "")}`}
+                          alt="Foto após a resolução"
+                          className="w-full max-h-[260px] object-cover rounded-lg border border-emerald-100" />
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {denunciaSelecionada.status !== "RESOLVIDO" && denunciaSelecionada.status !== "ARQUIVADA" && (
                   <div className="flex gap-2 mt-5 pt-5 border-t border-gray-100">
                     <button
-                      onClick={() => { atualizarStatus(denunciaSelecionada.id, "RESOLVIDO"); setDenunciaSelecionada(null); }}
+                      onClick={() => abrirFinalizar(denunciaSelecionada, "RESOLVIDO")}
                       className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition"
                     >
                       Marcar como resolvida
@@ -883,6 +1348,12 @@ export default function AdminDashboard() {
                       className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition"
                     >
                       Em análise
+                    </button>
+                    <button
+                      onClick={() => abrirFinalizar(denunciaSelecionada, "ARQUIVADA")}
+                      className="flex-1 py-2 rounded-lg bg-gray-500 text-white text-sm font-semibold hover:bg-gray-600 transition"
+                    >
+                      Cancelar denúncia
                     </button>
                   </div>
                 )}
